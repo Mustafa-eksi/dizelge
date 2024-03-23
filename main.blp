@@ -1,0 +1,29 @@
+using Gtk 4.0;
+
+Window main_window {
+  default-height: 800;
+  default-width: 500;
+
+  Box {
+    orientation: vertical;
+    margin-top: 10;
+    Box {
+      margin-start: 5;
+      orientation: horizontal;
+
+      Entry etxt {
+        placeholder-text: 'isim yaz';
+        hexpand: true;
+      }
+
+      Button add_button {
+        margin-start: 5;
+        margin-end: 5;
+        label: '+';
+      }
+    }
+    ListView listem {
+    
+    }
+  }
+}
