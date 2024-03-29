@@ -39,6 +39,7 @@
       "-pthread",
       "-I/usr/include/libpng16",
       "-I/usr/include/pixman-1",
+      "-I.",
       "-o",
       "main",
       "main.cpp"

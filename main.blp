@@ -1,7 +1,7 @@
 using Gtk 4.0;
 
 Window main_window {
-  default-height: 800;
+  default-height: 500;
   default-width: 500;
 
   Box {
@@ -25,5 +25,16 @@ Window main_window {
     ListView listem {
     
     }
+  }
+}
+
+Window EntryWindow {
+  default-height: 500;
+  default-width: 500;
+  Box {
+    orientation: vertical;
+    margin-top: 10;
+    Label filename_label {}
+    Label exec_label {}
   }
 }
