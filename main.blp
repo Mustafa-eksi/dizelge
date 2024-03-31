@@ -1,12 +1,140 @@
 using Gtk 4.0;
 
+Window EntryWindow {
+  default-height: 500;
+  default-width: 800;
+
+  Box {
+    orientation: vertical;
+    halign: fill;
+    hexpand: true;
+
+    Box MoreImportant {
+      hexpand: true;
+      margin-start: 12;
+      margin-top: 12;
+      valign: start;
+
+      Image app_icon {
+        icon-name: "io.bassi.Amberol";
+        icon-size: large;
+        pixel-size: 96;
+      }
+
+      Box {
+        hexpand: true;
+        orientation: vertical;
+        valign: start;
+        margin-start: 12;
+        margin-end: 16;
+        Box {
+          hexpand: true;
+          orientation: horizontal;
+          margin-top: 12;
+
+          Label {
+            margin-end: 12;
+            label: "Type:";
+          }
+
+          DropDown type_drop {
+          }
+        }
+
+        Box {
+          hexpand: true;
+          orientation: horizontal;
+          margin-top: 12;
+
+          Label {
+            margin-end: 12;
+            label: "Name:";
+          }
+
+          Entry filename_entry {
+            placeholder-text: "file";
+            hexpand: true;
+          }
+        }
+      }
+    }
+    Box NotSoImportant {
+      orientation: vertical;
+      vexpand: true;
+      margin-start: 12;
+      margin-end: 16;
+      margin-bottom: 16;
+      hexpand: true;
+      Box {
+        margin-top: 12;
+        orientation: horizontal;
+
+        Label {
+          margin-end: 12;
+          label: "Comment:";
+        }
+
+        Entry comment_entry {
+          placeholder-text: "Comment";
+          hexpand: true;
+        }
+      }
+      Box {
+        margin-top: 12;
+        orientation: horizontal;
+
+        Label {
+          margin-end: 12;
+          label: "Categories:";
+        }
+
+        Entry categories_entry {
+          placeholder-text: "Category";
+          hexpand: true;
+        }
+      }
+      Box {
+        margin-top: 12;
+        orientation: horizontal;
+
+        Label {
+          margin-end: 12;
+          label: "Exec:";
+        }
+
+        Entry exec_entry {
+          placeholder-text: "exec";
+          hexpand: true;
+        }
+      }
+      CheckButton terminal_check {
+        label: "Run in terminal";
+      }
+      Box bottombar {
+        valign: end;
+        vexpand: true;
+        halign: end;
+        Button {
+          styles [
+            "suggested-action",
+          ]
+          icon-name: "checkmark";
+          label: "save";
+        }
+      }
+    }
+  }
+}
+
 Window main_window {
   default-height: 500;
   default-width: 500;
 
-  ScrolledWindow {
-    //orientation: vertical;
+  Box {
+    orientation: vertical;
     margin-top: 10;
+    hexpand: true;
+
     Box {
       margin-start: 5;
       orientation: horizontal;
@@ -22,20 +150,12 @@ Window main_window {
         label: '+';
       }
     }
-    ListView listem {
-    
-    }
-  }
-}
 
-Window EntryWindow {
-  default-height: 500;
-  default-width: 500;
-  Box {
-    orientation: vertical;
-    margin-top: 10;
-    Label filename_label {}
-    Label exec_label {}
-    Label url_label {}
+    ScrolledWindow {
+      propagate-natural-height: true;
+      hexpand: true;
+
+      ListView listem {}
+    }
   }
 }

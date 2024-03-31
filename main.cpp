@@ -1,14 +1,19 @@
-//#include "sigc++/functors/ptr_fun.h"
+#include <cstddef>
 #include <iostream>
 #include <gtkmm.h>
 #include <format>
 #include <filesystem>
 #include <iostream>
 #include <unordered_map>
+#include <vector>
 
 #include "desktop.cpp"
 #include "glibmm/ustring.h"
+#include "gtkmm/checkbutton.h"
+#include "gtkmm/dropdown.h"
 #include "gtkmm/liststore.h"
+#include "gtkmm/singleselection.h"
+#include "gtkmm/stringlist.h"
 #include "sigc++/functors/ptr_fun.h"
 
 struct ListUi {
@@ -20,7 +25,11 @@ struct ListUi {
 
 struct EntryUi {
 	deskentry::DesktopEntry de;
-	Gtk::Label *filename_label, *exec_label, *url_label;
+	// TODO: replace categories_entry with a listview or smth.
+	Gtk::Entry *filename_entry, *exec_entry, *comment_entry, *categories_entry;
+	Gtk::CheckButton *terminal_check;
+	Gtk::DropDown *type_drop;
+	Gtk::Image *icon;
 };
 
 struct KisayolApp {
@@ -32,32 +41,65 @@ struct KisayolApp {
 	std::vector<deskentry::DesktopEntry> list;
 	ListUi lui;
 	EntryUi eui;
+	char *XDG_ENV;
 };
+
+const std::vector<Glib::ustring> TypeLookup = {"Application", "Link", "Directory"};
 
 // TODO: get rid of global variables
 struct KisayolApp kapp = { 0 };
 
-static void lui_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
-	GtkWidget *lb = gtk_button_new ();
+static void dd_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+	GtkWidget *lb = gtk_label_new (NULL);
   	gtk_list_item_set_child (list_item->gobj(), lb);
 }
 
+static void dd_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+	GtkWidget *lb = gtk_list_item_get_child (list_item->gobj());
+	/* Strobj is owned by the instance. Caller mustn't change or destroy it. */
+	GtkStringObject *strobj = GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj()));
+	/* The string returned by gtk_string_object_get_string is owned by the instance. */
+	gtk_label_set_text (GTK_LABEL(lb), gtk_string_object_get_string (strobj));
+}
 
 void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
+	eui->filename_entry->set_text(de.pe["Desktop Entry"]["Name"].strval);
+	eui->exec_entry->set_text(de.pe["Desktop Entry"]["Exec"].strval);
+	eui->terminal_check->set_active(de.pe["Desktop Entry"]["Terminal"].strval == "true");
+	eui->comment_entry->set_text(de.pe["Desktop Entry"]["Comment"].strval);
+	eui->categories_entry->set_text(de.pe["Desktop Entry"]["Categories"].strval);
 
-	eui->filename_label->set_label(de.pe["Desktop Entry"]["Name"].strval);
-	eui->exec_label->set_label(de.pe["Desktop Entry"]["Exec"].strval);
-	eui->url_label->set_label(de.pe["Desktop Entry"]["GenericName"].strval);
+	// set type dropdown
+	auto ddsl = Gtk::StringList::create(TypeLookup);
+	auto ddss = Gtk::SingleSelection::create(ddsl);
+	auto factory = Gtk::SignalListItemFactory::create();
+	factory->signal_setup().connect(sigc::ptr_fun(dd_setup));
+	factory->signal_bind().connect(sigc::ptr_fun(dd_bind));
+	
+	eui->type_drop->set_model(ddss);
+	eui->type_drop->set_factory(factory);
+	eui->type_drop->set_selected(de.type);
+
+	// Set icon
+	if (de.pe["Desktop Entry"]["Icon"].strval == "")
+		eui->icon->set_from_icon_name("applications-other");
+	else if (de.isGicon)
+		eui->icon->set_from_icon_name(de.pe["Desktop Entry"]["Icon"].strval);
+	else
+		eui->icon->set_from_resource(de.pe["Desktop Entry"]["Icon"].strval);
 }
 
 void entry_ui() {
 	kapp.entry_window = kapp.builder->get_widget<Gtk::Window>("EntryWindow");
 	kapp.entry_window->set_hide_on_close(true);
 	kapp.entry_window->set_application(kapp.app);
-	kapp.eui.filename_label = kapp.builder->get_widget<Gtk::Label>("filename_label");
-	kapp.eui.exec_label = kapp.builder->get_widget<Gtk::Label>("exec_label");
-	kapp.eui.url_label = kapp.builder->get_widget<Gtk::Label>("url_label");
-	
+	kapp.eui.filename_entry = kapp.builder->get_widget<Gtk::Entry>("filename_entry");
+	kapp.eui.exec_entry = kapp.builder->get_widget<Gtk::Entry>("exec_entry");
+	kapp.eui.terminal_check = kapp.builder->get_widget<Gtk::CheckButton>("terminal_check");
+	kapp.eui.type_drop = kapp.builder->get_widget<Gtk::DropDown>("type_drop");
+	kapp.eui.icon = kapp.builder->get_widget<Gtk::Image>("app_icon");
+	kapp.eui.comment_entry = kapp.builder->get_widget<Gtk::Entry>("comment_entry");
+	kapp.eui.categories_entry = kapp.builder->get_widget<Gtk::Entry>("categories_entry");
 	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 	
 	kapp.entry_window->present();
@@ -65,12 +107,17 @@ void entry_ui() {
 
 void button_clicked(GtkWidget *widget, gpointer data) {
 	Glib::ustring strs = gtk_button_get_label(GTK_BUTTON(widget));
-	int pos = 0;
-	for(int i = 0; i < kapp.lui.strings.size(); i++)
+	size_t pos = 0;
+	for(size_t i = 0; i < kapp.lui.strings.size(); i++)
 		if (kapp.lui.strings[i].data() == strs)
 			pos = i;
 	kapp.eui.de = kapp.list.at(pos == Glib::ustring::npos ? 0 : pos);
 	entry_ui();
+}
+
+static void lui_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+	GtkWidget *lb = gtk_button_new ();
+  	gtk_list_item_set_child (list_item->gobj(), lb);
 }
 
 static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
@@ -99,10 +146,13 @@ void init_ui() {
 	kapp.main_window->set_application(kapp.app);
 	
 	for (const auto & entry : std::filesystem::directory_iterator("/usr/share/applications/")){
-		auto pde = deskentry::parse_file(entry.path());
+		auto pde = deskentry::parse_file(entry.path(), kapp.XDG_ENV);
 		if(pde.has_value()) {
-			kapp.list.push_back(pde.value());
-			kapp.lui.strings.push_back(pde.value().pe["Desktop Entry"]["Name"].strval);
+			auto pe = pde.value();
+			if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
+				kapp.list.push_back(pde.value());
+				kapp.lui.strings.push_back(pde.value().pe["Desktop Entry"]["Name"].strval);
+			}
 		}
 	}
 	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings); // gtk_string_list_new ((const char * const *) array);
@@ -133,11 +183,15 @@ int main(int argc, char* argv[])
 	std::string first_arg = argv[0];
 	std::string abs_path = first_arg.substr(0, first_arg.length()-4);
 	
-	kapp.app = Gtk::Application::create("org.mustafa.kisayolduzenleyici");
+	kapp.app = Gtk::Application::create("org.mustafa.dizelge");
 	
 	kapp.builder = Gtk::Builder::create_from_file(abs_path + "kisa.ui");
 	if(!kapp.builder)
 		return 1;
+
+	kapp.XDG_ENV = std::getenv("XDG_CURRENT_DESKTOP");
+	if (kapp.XDG_ENV == NULL)
+		kapp.XDG_ENV = const_cast<char*>("none");
 	
 	//kapp.eui.filepath = "/usr/share/applications/btop.desktop";
 	kapp.app->signal_activate().connect(sigc::ptr_fun(init_ui));

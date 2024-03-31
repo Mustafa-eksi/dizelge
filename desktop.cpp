@@ -1,3 +1,4 @@
+#include "glibmm/ustring.h"
 #include <exception>
 #include <ios>
 #include <optional>
@@ -30,9 +31,18 @@ struct ParsedValue {
 typedef std::unordered_map<std::string, ParsedValue> ParsedGroup;
 typedef std::unordered_map<std::string, ParsedGroup> ParsedEntry;
 
+typedef enum EntryType {
+        Application = 0,
+        Link = 1,
+        Directory = 2,
+        UndefinedType
+} EntryType;
+
 typedef struct DesktopEntry {
         ParsedEntry pe;
-        bool onMenu, onDesktop, onTaskbar;
+        enum EntryType type;
+        bool isGicon, onMenu, onDesktop, onTaskbar, HiddenFilter, NoDisplayFilter,
+             OnlyShowInFilter;
 } DesktopEntry;
 
 void print_unde(UnparsedEntry unde) {
@@ -53,6 +63,7 @@ std::string type_to_str(ValueType t) {
                 case Boolean: return "Boolean";
                 case Numeric: return "Numeric";
         }
+        return "UndefinedType";
 }
 
 void print_pe(ParsedEntry pe) {
@@ -74,32 +85,35 @@ std::optional<ParsedEntry> parse_entry(UnparsedEntry unde) {
         for (auto const& [group, keyval] : unde) {
                 pe[group] = {};
                 for (auto const& [key, val] : keyval) {
+                        pe[group][key].strval = val;
+
+                        // keys like Comment[tr]
                         if (key.ends_with("]")) {
                                 pe[group][key].isLocal = true;
                                 pe[group][key].locale = key.substr(key.find("["));
                                 pe[group][key].type = ValueType::LocaleString;
                         }
-                        pe[group][key].strval = val;
-
                         if (val == "true" || val == "false") {
                                 pe[group][key].type = ValueType::Boolean;
-                                pe[group][key].strval = val == "true";
                                 continue;
                         }
+                        // Version key falls into float category in most applications
+                        // but it is defined as string in the spec.
                         if(key != "Version") {
                                 try {
-                                        float f = std::stof(val);
+                                        // This line will throw an exception if val isn't a float.
+                                        std::stof(val); // Can create problems with higher rates of optimisation.
                                         pe[group][key].type = ValueType::Numeric;
                                         continue;
-                                } catch (std::exception e) {}
+                                } catch (std::exception& _) {}
                         }
-
+                        // Specification doesn't specify what is an array well, so this can sometimes fail.
                         if (val.find(";") != std::string::npos) {
                                 pe[group][key].isArray = true;
                         }
                         if (pe[group][key].type != ValueType::LocaleString) {
-                                // IconString is only for Icon
                                 pe[group][key].type = ValueType::String;
+                                // Icon's value is a string but it is iconstring (idk why but can be related to paths)
                                 if (key == "Icon")
                                         pe[group][key].type = ValueType::IconString;
                         }
@@ -112,6 +126,7 @@ std::optional<UnparsedEntry> read_file(std::string filepath) {
         std::string buffer;
         UnparsedEntry unde;
 
+        // Read whole file into buffer.
         std::ifstream de_file(filepath);
         de_file.seekg(0, std::ios::end);
         buffer.resize(de_file.tellg());
@@ -119,9 +134,9 @@ std::optional<UnparsedEntry> read_file(std::string filepath) {
         de_file.read(buffer.data(), buffer.size());
 
         std::string current_group;
-        for (int i = 0; i < buffer.size(); i++) {
-                int eq_pos;
-                int end_of_line = buffer.find("\n", i);
+        for (size_t i = 0; i < buffer.size(); i++) {
+                size_t eq_pos;
+                size_t end_of_line = buffer.find("\n", i);
 
                 std::string current_line = buffer.substr(i, end_of_line-i);
                 // Shebang or comment
@@ -161,14 +176,38 @@ skip:
         return unde;
 }
 
-std::optional<DesktopEntry> parse_file(std::string filepath) {
+enum EntryType parse_type(std::string typestr) {
+        if (typestr == "Application") return EntryType::Application;
+        if (typestr == "Link") return EntryType::Link;
+        if (typestr == "Directory") return EntryType::Directory;
+        return EntryType::UndefinedType;
+}
+
+bool parse_desktop_filter(ParsedEntry pe, std::string xdg_env) {
+        bool res = false;
+        if (pe["Desktop Entry"]["OnlyShowIn"].strval != "")
+                res = pe["Desktop Entry"]["OnlyShowIn"].strval.find(xdg_env) != Glib::ustring::npos;
+        if (pe["Desktop Entry"]["NotShowIn"].strval != "")
+                res = pe["Desktop Entry"]["NotShowIn"].strval.find(xdg_env) == Glib::ustring::npos;
+        return res;
+}
+
+std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env) {
         if (auto unde = read_file(filepath)){
-                auto pe = parse_entry(unde.value());
-                if(!pe.has_value())
+                auto oppe = parse_entry(unde.value());
+                if(!oppe.has_value())
                         return {};
-                return (DesktopEntry) {
-                        .pe = pe.value(),
+                ParsedEntry pe = oppe.value();
+                DesktopEntry de = (DesktopEntry) {
+                        .pe = pe,
+                        .type = parse_type(pe["Desktop Entry"]["Type"].strval),
+                        .isGicon = pe["Desktop Entry"]["Icon"].strval.find("/") == Glib::ustring::npos,
+                        .HiddenFilter = pe["Desktop Entry"]["Hidden"].strval == "true",
+                        .NoDisplayFilter = pe["Desktop Entry"]["NoDisplay"].strval == "true",
+                        .OnlyShowInFilter = parse_desktop_filter(pe, xdg_env)
                 };
+                
+                return de;
         } else {
                 return {};
         }
