@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <unordered_map>
 #include <vector>
+#include <unistd.h>
 
 namespace deskentry {
 
@@ -42,7 +43,7 @@ typedef struct DesktopEntry {
         ParsedEntry pe;
         enum EntryType type;
         bool isGicon, onMenu, onDesktop, onTaskbar, HiddenFilter, NoDisplayFilter,
-             OnlyShowInFilter;
+             OnlyShowInFilter, TryExecFilter;
 } DesktopEntry;
 
 void print_unde(UnparsedEntry unde) {
@@ -192,6 +193,13 @@ bool parse_desktop_filter(ParsedEntry pe, std::string xdg_env) {
         return res;
 }
 
+// FIXME: make this compatible with spec.
+bool try_exec(ParsedEntry pe) {
+        if (pe["Desktop Entry"]["TryExec"].strval.empty())
+                return true;
+        return access(pe["Desktop Entry"]["TryExec"].strval.c_str(), X_OK);
+}
+
 std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env) {
         if (auto unde = read_file(filepath)){
                 auto oppe = parse_entry(unde.value());
@@ -204,7 +212,8 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
                         .isGicon = pe["Desktop Entry"]["Icon"].strval.find("/") == Glib::ustring::npos,
                         .HiddenFilter = pe["Desktop Entry"]["Hidden"].strval == "true",
                         .NoDisplayFilter = pe["Desktop Entry"]["NoDisplay"].strval == "true",
-                        .OnlyShowInFilter = parse_desktop_filter(pe, xdg_env)
+                        .OnlyShowInFilter = parse_desktop_filter(pe, xdg_env),
+                        .TryExecFilter = try_exec(pe)
                 };
                 
                 return de;

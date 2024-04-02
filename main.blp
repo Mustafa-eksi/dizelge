@@ -1,5 +1,39 @@
 using Gtk 4.0;
 
+Window main_window {
+  default-height: 500;
+  default-width: 500;
+
+  Box {
+    orientation: vertical;
+    margin-top: 10;
+    hexpand: true;
+
+    Box {
+      margin-start: 5;
+      orientation: horizontal;
+
+      Entry etxt {
+        placeholder-text: 'isim yaz';
+        hexpand: true;
+      }
+
+      Button add_button {
+        margin-start: 5;
+        margin-end: 5;
+        label: '+';
+      }
+    }
+
+    ScrolledWindow {
+      propagate-natural-height: true;
+      hexpand: true;
+
+      ListView listem {}
+    }
+  }
+}
+
 Window EntryWindow {
   default-height: 500;
   default-width: 800;
@@ -16,7 +50,7 @@ Window EntryWindow {
       valign: start;
 
       Image app_icon {
-        icon-name: "io.bassi.Amberol";
+        icon-name: "applications-other";
         icon-size: large;
         pixel-size: 96;
       }
@@ -110,6 +144,16 @@ Window EntryWindow {
       CheckButton terminal_check {
         label: "Run in terminal";
       }
+      CheckButton dgpu_check {
+        label: "Prefers discrete GPU";
+        has-tooltip: true;
+        tooltip-text: "If true, the application prefers to be run on a more powerful discrete GPU if available.";
+      }
+      CheckButton single_main_window {
+        label: "Single Main Window";
+        has-tooltip: true;
+        tooltip-text: "If true, the application has a single main window, and does not support having an additional one opened.";
+      }
       Box bottombar {
         valign: end;
         vexpand: true;
@@ -122,40 +166,6 @@ Window EntryWindow {
           label: "save";
         }
       }
-    }
-  }
-}
-
-Window main_window {
-  default-height: 500;
-  default-width: 500;
-
-  Box {
-    orientation: vertical;
-    margin-top: 10;
-    hexpand: true;
-
-    Box {
-      margin-start: 5;
-      orientation: horizontal;
-
-      Entry etxt {
-        placeholder-text: 'isim yaz';
-        hexpand: true;
-      }
-
-      Button add_button {
-        margin-start: 5;
-        margin-end: 5;
-        label: '+';
-      }
-    }
-
-    ScrolledWindow {
-      propagate-natural-height: true;
-      hexpand: true;
-
-      ListView listem {}
     }
   }
 }
