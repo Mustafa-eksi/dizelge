@@ -2,43 +2,41 @@ using Gtk 4.0;
 
 Window main_window {
   default-height: 500;
-  default-width: 500;
-
+  default-width: 1000;
   Box {
-    orientation: vertical;
-    margin-top: 10;
-    hexpand: true;
-
+    orientation: horizontal;
+    spacing: 10;
+    margin-start: 10;
     Box {
-      margin-start: 5;
-      orientation: horizontal;
-
-      Entry etxt {
-        placeholder-text: 'isim yaz';
-        hexpand: true;
-      }
-
-      Button add_button {
-        margin-start: 5;
-        margin-end: 5;
-        label: '+';
-      }
-    }
-
-    ScrolledWindow {
-      propagate-natural-height: true;
+      orientation: vertical;
+      margin-top: 10;
       hexpand: true;
 
-      ListView listem {}
+      Box {
+        margin-start: 5;
+        orientation: horizontal;
+        margin-bottom: 10;
+
+        Entry etxt {
+          placeholder-text: 'isim yaz';
+          hexpand: true;
+        }
+
+        Button add_button {
+          margin-start: 5;
+          margin-end: 5;
+          label: '+';
+        }
+      }
+
+      ScrolledWindow {
+        propagate-natural-height: true;
+        hexpand: true;
+
+        ListView listem {}
+      }
     }
-  }
-}
-
-Window EntryWindow {
-  default-height: 500;
-  default-width: 800;
-
-  Box {
+    Box {
     orientation: vertical;
     halign: fill;
     hexpand: true;
@@ -105,6 +103,20 @@ Window EntryWindow {
 
         Label {
           margin-end: 12;
+          label: "Generic Name:";
+        }
+
+        Entry generic_name_entry {
+          placeholder-text: "Generic Name";
+          hexpand: true;
+        }
+      }
+      Box {
+        margin-top: 12;
+        orientation: horizontal;
+
+        Label {
+          margin-end: 12;
           label: "Comment:";
         }
 
@@ -141,6 +153,20 @@ Window EntryWindow {
           hexpand: true;
         }
       }
+      Box {
+        margin-top: 12;
+        orientation: horizontal;
+
+        Label {
+          margin-end: 12;
+          label: "Working Directory:";
+        }
+
+        Entry path_entry {
+          placeholder-text: "Path";
+          hexpand: true;
+        }
+      }
       CheckButton terminal_check {
         label: "Run in terminal";
       }
@@ -167,5 +193,6 @@ Window EntryWindow {
         }
       }
     }
+  }
   }
 }

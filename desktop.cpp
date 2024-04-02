@@ -206,9 +206,13 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
                 if(!oppe.has_value())
                         return {};
                 ParsedEntry pe = oppe.value();
+                EntryType et = parse_type(pe["Desktop Entry"]["Type"].strval);
+                // See specification: table 2. Standard Keys
+                if (et == EntryType::UndefinedType)
+                        return {};
                 DesktopEntry de = (DesktopEntry) {
                         .pe = pe,
-                        .type = parse_type(pe["Desktop Entry"]["Type"].strval),
+                        .type = et,
                         .isGicon = pe["Desktop Entry"]["Icon"].strval.find("/") == Glib::ustring::npos,
                         .HiddenFilter = pe["Desktop Entry"]["Hidden"].strval == "true",
                         .NoDisplayFilter = pe["Desktop Entry"]["NoDisplay"].strval == "true",

@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <exception>
 #include <iostream>
 #include <gtkmm.h>
 #include <format>
@@ -26,8 +27,9 @@ struct ListUi {
 struct EntryUi {
 	deskentry::DesktopEntry de;
 	// TODO: replace categories_entry with a listview or smth.
-	Gtk::Entry *filename_entry, *exec_entry, *comment_entry, *categories_entry;
-	Gtk::CheckButton *terminal_check;
+	Gtk::Entry *filename_entry, *exec_entry, *comment_entry, *categories_entry,
+		   *generic_name_entry, *path_entry;
+	Gtk::CheckButton *terminal_check, *dgpu_check, *single_main_window;
 	Gtk::DropDown *type_drop;
 	Gtk::Image *icon;
 };
@@ -62,12 +64,20 @@ static void dd_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	gtk_label_set_text (GTK_LABEL(lb), gtk_string_object_get_string (strobj));
 }
 
+std::string de_val(deskentry::DesktopEntry de, std::string key) {
+        return de.pe["Desktop Entry"][key].strval;
+}
+
 void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
-	eui->filename_entry->set_text(de.pe["Desktop Entry"]["Name"].strval);
-	eui->exec_entry->set_text(de.pe["Desktop Entry"]["Exec"].strval);
-	eui->terminal_check->set_active(de.pe["Desktop Entry"]["Terminal"].strval == "true");
+	eui->filename_entry->set_text(de_val(de, "Name"));
+	eui->exec_entry->set_text(de_val(de, "Exec"));
 	eui->comment_entry->set_text(de.pe["Desktop Entry"]["Comment"].strval);
 	eui->categories_entry->set_text(de.pe["Desktop Entry"]["Categories"].strval);
+	eui->generic_name_entry->set_text(de.pe["Desktop Entry"]["GenericName"].strval);
+	eui->path_entry->set_text(de.pe["Desktop Entry"]["Path"].strval);
+	eui->terminal_check->set_active(de_val(de, "Terminal") == "true");
+	eui->dgpu_check->set_active(de_val(de, "PrefersNonDefaultGPU") == "true");
+	eui->single_main_window->set_active(de_val(de, "SingleMainWindow") == "true");
 
 	// set type dropdown
 	auto ddsl = Gtk::StringList::create(TypeLookup);
@@ -90,9 +100,6 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 }
 
 void entry_ui() {
-	kapp.entry_window = kapp.builder->get_widget<Gtk::Window>("EntryWindow");
-	kapp.entry_window->set_hide_on_close(true);
-	kapp.entry_window->set_application(kapp.app);
 	kapp.eui.filename_entry = kapp.builder->get_widget<Gtk::Entry>("filename_entry");
 	kapp.eui.exec_entry = kapp.builder->get_widget<Gtk::Entry>("exec_entry");
 	kapp.eui.terminal_check = kapp.builder->get_widget<Gtk::CheckButton>("terminal_check");
@@ -100,9 +107,11 @@ void entry_ui() {
 	kapp.eui.icon = kapp.builder->get_widget<Gtk::Image>("app_icon");
 	kapp.eui.comment_entry = kapp.builder->get_widget<Gtk::Entry>("comment_entry");
 	kapp.eui.categories_entry = kapp.builder->get_widget<Gtk::Entry>("categories_entry");
+	kapp.eui.generic_name_entry = kapp.builder->get_widget<Gtk::Entry>("generic_name_entry");
+	kapp.eui.path_entry = kapp.builder->get_widget<Gtk::Entry>("path_entry");
+	kapp.eui.single_main_window = kapp.builder->get_widget<Gtk::CheckButton>("single_main_window");
+	kapp.eui.dgpu_check = kapp.builder->get_widget<Gtk::CheckButton>("dgpu_check");
 	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
-	
-	kapp.entry_window->present();
 }
 
 void button_clicked(GtkWidget *widget, gpointer data) {
@@ -146,13 +155,17 @@ void init_ui() {
 	kapp.main_window->set_application(kapp.app);
 	
 	for (const auto & entry : std::filesystem::directory_iterator("/usr/share/applications/")){
-		auto pde = deskentry::parse_file(entry.path(), kapp.XDG_ENV);
-		if(pde.has_value()) {
-			auto pe = pde.value();
-			if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
-				kapp.list.push_back(pde.value());
-				kapp.lui.strings.push_back(pde.value().pe["Desktop Entry"]["Name"].strval);
+		try {
+			auto pde = deskentry::parse_file(entry.path(), kapp.XDG_ENV);
+			if(pde.has_value()) {
+				auto pe = pde.value();
+				if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
+					kapp.list.push_back(pde.value());
+					kapp.lui.strings.push_back(pde.value().pe["Desktop Entry"]["Name"].strval);
+				}
 			}
+		} catch (std::exception& e) {
+			printf("!!ERROR!! %s\n", entry.path().c_str());
 		}
 	}
 	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings); // gtk_string_list_new ((const char * const *) array);
