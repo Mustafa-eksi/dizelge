@@ -10,9 +10,11 @@
 
 #include "desktop.cpp"
 #include "glibmm/ustring.h"
+#include "gtkmm/button.h"
 #include "gtkmm/checkbutton.h"
 #include "gtkmm/dropdown.h"
 #include "gtkmm/liststore.h"
+#include "gtkmm/listview.h"
 #include "gtkmm/singleselection.h"
 #include "gtkmm/stringlist.h"
 #include "sigc++/functors/ptr_fun.h"
@@ -41,6 +43,8 @@ struct KisayolApp {
 	Gtk::Button *ab;
 	Gtk::Entry *etxt;
 	std::vector<deskentry::DesktopEntry> list;
+	std::map<std::string, deskentry::CatList> catlist;
+	std::vector<Gtk::ListView*> category_views;
 	ListUi lui;
 	EntryUi eui;
 	char *XDG_ENV;
@@ -125,19 +129,65 @@ void button_clicked(GtkWidget *widget, gpointer data) {
 }
 
 static void lui_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
-	GtkWidget *lb = gtk_button_new ();
+	GtkWidget *lb = gtk_expander_new (NULL);
   	gtk_list_item_set_child (list_item->gobj(), lb);
+}
+
+static void cat_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+	GtkWidget *lb = gtk_label_new (NULL);
+  	gtk_list_item_set_child (list_item->gobj(), lb);
+}
+
+void catlist_button_clicked(guint position) {
+	printf("pos: %d\n", position);
+	/*auto button = GTK_BUTTON(widget);
+	auto exp = GTK_EXPANDER(gtk_widget_get_parent(gtk_widget_get_parent(widget)));
+	auto catname = gtk_expander_get_label(exp);
+	printf("Catname: %s\n", catname);*/
+	/*Glib::ustring strs = gtk_button_get_label(GTK_BUTTON(widget));
+	size_t pos = 0;
+	for(size_t i = 0; i < kapp.lui.strings.size(); i++)
+		if (kapp.lui.strings[i].data() == strs)
+			pos = i;
+	kapp.eui.de = kapp.list.at(pos == Glib::ustring::npos ? 0 : pos);
+	entry_ui();*/
+
+}
+
+static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+	//GtkButton *lb = GTK_BUTTON(gtk_list_item_get_child (list_item->gobj()));
+	auto lb = dynamic_cast<Gtk::Label*>(list_item->get_child());
+	/* Strobj is owned by the instance. Caller mustn't change or destroy it. */
+	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
+	/* The string returned by gtk_string_object_get_string is owned by the instance. */
+	
+	//g_signal_connect_object(list_item->gobj(), "activate", &catlist_button_clicked, NULL, G_CONNECT_DEFAULT);
+	lb->set_label(strobj);
 }
 
 static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	GtkWidget *lb = gtk_list_item_get_child (list_item->gobj());
 	/* Strobj is owned by the instance. Caller mustn't change or destroy it. */
-	GtkStringObject *strobj = GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj()));
+	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
 	/* The string returned by gtk_string_object_get_string is owned by the instance. */
-	gtk_button_set_label (GTK_BUTTON(lb), gtk_string_object_get_string (strobj));
-	g_signal_connect(G_OBJECT(lb), "clicked", 
-      		G_CALLBACK(button_clicked), NULL);
-
+	gtk_expander_set_label (GTK_EXPANDER(lb), strobj.c_str());
+	
+	const Gtk::TreeModelColumnRecord columns;
+	auto model = Gtk::ListStore::create(columns);
+	auto gsl = Gtk::StringList::create();
+	for (size_t i = 0; i < kapp.catlist[strobj].size(); i++) {
+		gsl->append(kapp.catlist[strobj][i]);
+	}
+	auto ns = Gtk::NoSelection::create(gsl);
+	auto fac = Gtk::SignalListItemFactory::create();
+	fac->signal_setup().connect(sigc::ptr_fun(cat_setup));
+	fac->signal_bind().connect(sigc::ptr_fun(cat_bind));
+	kapp.category_views.push_back(new Gtk::ListView());
+	kapp.category_views[kapp.category_views.size()-1]->set_model(ns);
+	kapp.category_views[kapp.category_views.size()-1]->set_factory(fac);
+	kapp.category_views[kapp.category_views.size()-1]->set_single_click_activate(true);
+	kapp.category_views[kapp.category_views.size()-1]->signal_activate().connect(sigc::ptr_fun(catlist_button_clicked));
+	gtk_expander_set_child(GTK_EXPANDER(lb), GTK_WIDGET(kapp.category_views[kapp.category_views.size()-1]->gobj()));
 }
 
 static void add_button_clicked() {
@@ -153,20 +203,27 @@ void init_ui() {
 
 	kapp.main_window = kapp.builder->get_widget<Gtk::Window>("main_window");
 	kapp.main_window->set_application(kapp.app);
-	
+
 	for (const auto & entry : std::filesystem::directory_iterator("/usr/share/applications/")){
 		try {
 			auto pde = deskentry::parse_file(entry.path(), kapp.XDG_ENV);
 			if(pde.has_value()) {
 				auto pe = pde.value();
 				if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
-					kapp.list.push_back(pde.value());
-					kapp.lui.strings.push_back(pde.value().pe["Desktop Entry"]["Name"].strval);
+					for (size_t i = 0; i < pe.Categories.size(); i++) {
+						kapp.catlist[pe.Categories[i]].push_back(pe.pe["Desktop Entry"]["Name"].strval);
+					}
+					//kapp.list.push_back(pe);
+					//kapp.lui.strings.push_back(pe.pe["Desktop Entry"]["Name"].strval);
 				}
 			}
 		} catch (std::exception& e) {
-			printf("!!ERROR!! %s\n", entry.path().c_str());
+			printf("!!ERROR!! %s: %s\n", entry.path().c_str(), e.what());
+			return;
 		}
+	}
+	for (auto const& [group, apps] : kapp.catlist) {
+		kapp.lui.strings.push_back(group);
 	}
 	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings); // gtk_string_list_new ((const char * const *) array);
 	auto ns = Gtk::NoSelection::create(kapp.lui.sl); // gtk_no_selection_new (G_LIST_MODEL (sl));

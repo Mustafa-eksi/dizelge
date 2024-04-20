@@ -39,11 +39,14 @@ typedef enum EntryType {
         UndefinedType
 } EntryType;
 
+typedef std::vector<std::string> CatList;
+
 typedef struct DesktopEntry {
         ParsedEntry pe;
         enum EntryType type;
         bool isGicon, onMenu, onDesktop, onTaskbar, HiddenFilter, NoDisplayFilter,
              OnlyShowInFilter, TryExecFilter;
+        CatList Categories;
 } DesktopEntry;
 
 void print_unde(UnparsedEntry unde) {
@@ -200,6 +203,22 @@ bool try_exec(ParsedEntry pe) {
         return access(pe["Desktop Entry"]["TryExec"].strval.c_str(), X_OK);
 }
 
+CatList parse_categories(ParsedEntry pe) {
+        CatList res;
+        if (pe["Desktop Entry"]["Categories"].isArray) {
+                std::string it = pe["Desktop Entry"]["Categories"].strval;
+                size_t pos = it.find(";");
+                while (pos != std::string::npos) {
+                        res.push_back(it.substr(0, pos));
+                        it = it.substr(pos+1);
+                        pos = it.find(";");
+                }
+        } else if (!pe["Desktop Entry"]["Categories"].strval.empty()){
+                res.push_back(pe["Desktop Entry"]["Categories"].strval);
+        }
+        return res;
+}
+
 std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env) {
         if (auto unde = read_file(filepath)){
                 auto oppe = parse_entry(unde.value());
@@ -217,7 +236,8 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
                         .HiddenFilter = pe["Desktop Entry"]["Hidden"].strval == "true",
                         .NoDisplayFilter = pe["Desktop Entry"]["NoDisplay"].strval == "true",
                         .OnlyShowInFilter = parse_desktop_filter(pe, xdg_env),
-                        .TryExecFilter = try_exec(pe)
+                        .TryExecFilter = try_exec(pe),
+                        .Categories = parse_categories(pe),
                 };
                 
                 return de;
