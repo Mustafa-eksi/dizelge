@@ -5,8 +5,10 @@
 #include <format>
 #include <filesystem>
 #include <iostream>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <functional>
 
 #include "desktop.cpp"
 #include "glibmm/ustring.h"
@@ -43,8 +45,9 @@ struct KisayolApp {
 	Gtk::Button *ab;
 	Gtk::Entry *etxt;
 	std::vector<deskentry::DesktopEntry> list;
-	std::map<std::string, deskentry::CatList> catlist;
+	std::map<std::string, std::vector<std::tuple<size_t, std::string>>> catlist;
 	std::vector<Gtk::ListView*> category_views;
+	size_t selected_category;
 	ListUi lui;
 	EntryUi eui;
 	char *XDG_ENV;
@@ -138,20 +141,9 @@ static void cat_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
   	gtk_list_item_set_child (list_item->gobj(), lb);
 }
 
-void catlist_button_clicked(guint position) {
-	printf("pos: %d\n", position);
-	/*auto button = GTK_BUTTON(widget);
-	auto exp = GTK_EXPANDER(gtk_widget_get_parent(gtk_widget_get_parent(widget)));
-	auto catname = gtk_expander_get_label(exp);
-	printf("Catname: %s\n", catname);*/
-	/*Glib::ustring strs = gtk_button_get_label(GTK_BUTTON(widget));
-	size_t pos = 0;
-	for(size_t i = 0; i < kapp.lui.strings.size(); i++)
-		if (kapp.lui.strings[i].data() == strs)
-			pos = i;
-	kapp.eui.de = kapp.list.at(pos == Glib::ustring::npos ? 0 : pos);
-	entry_ui();*/
-
+void catlist_button_clicked(guint position, std::string list_ind) {
+	kapp.eui.de = kapp.list[std::get<0>(kapp.catlist[list_ind][position])];
+	entry_ui();
 }
 
 static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
@@ -176,7 +168,7 @@ static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	auto model = Gtk::ListStore::create(columns);
 	auto gsl = Gtk::StringList::create();
 	for (size_t i = 0; i < kapp.catlist[strobj].size(); i++) {
-		gsl->append(kapp.catlist[strobj][i]);
+		gsl->append(std::get<1>(kapp.catlist[strobj][i]));
 	}
 	auto ns = Gtk::NoSelection::create(gsl);
 	auto fac = Gtk::SignalListItemFactory::create();
@@ -186,7 +178,8 @@ static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	kapp.category_views[kapp.category_views.size()-1]->set_model(ns);
 	kapp.category_views[kapp.category_views.size()-1]->set_factory(fac);
 	kapp.category_views[kapp.category_views.size()-1]->set_single_click_activate(true);
-	kapp.category_views[kapp.category_views.size()-1]->signal_activate().connect(sigc::ptr_fun(catlist_button_clicked));
+	auto sp_fn = std::bind(catlist_button_clicked, std::placeholders::_1, strobj);
+	kapp.category_views[kapp.category_views.size()-1]->signal_activate().connect(sp_fn);
 	gtk_expander_set_child(GTK_EXPANDER(lb), GTK_WIDGET(kapp.category_views[kapp.category_views.size()-1]->gobj()));
 }
 
@@ -211,9 +204,9 @@ void init_ui() {
 				auto pe = pde.value();
 				if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
 					for (size_t i = 0; i < pe.Categories.size(); i++) {
-						kapp.catlist[pe.Categories[i]].push_back(pe.pe["Desktop Entry"]["Name"].strval);
+						kapp.catlist[pe.Categories[i]].push_back({kapp.list.size(), pe.pe["Desktop Entry"]["Name"].strval});
 					}
-					//kapp.list.push_back(pe);
+					kapp.list.push_back(pe);
 					//kapp.lui.strings.push_back(pe.pe["Desktop Entry"]["Name"].strval);
 				}
 			}
