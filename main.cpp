@@ -11,7 +11,8 @@
 #include <functional>
 
 #include "desktop.cpp"
-#include "gtkmm/enums.h"
+
+#define DEFAULT_APP_ATTR "0 -1 font \"Sans 14\""
 
 struct ListUi {
 	Gtk::ListView *listem;
@@ -42,7 +43,7 @@ struct KisayolApp {
 	std::vector<deskentry::DesktopEntry> list;
 	CategoryEntries catlist;
 	std::vector<Gtk::ListView*> category_views;
-	size_t selected_category;
+	std::tuple<size_t, size_t> selection;
 	ListUi lui;
 	EntryUi eui;
 	char *XDG_ENV;
@@ -129,9 +130,6 @@ void button_clicked(GtkWidget *widget, gpointer data) {
 static void lui_setup(const Glib::RefPtr<Gtk::ListItem>& list_item, bool expand) {
 	GtkWidget *exp = gtk_expander_new (NULL);
 	gtk_expander_set_expanded(GTK_EXPANDER(exp), expand);
-	auto lb = gtk_expander_get_label_widget(GTK_EXPANDER(exp));
-	PangoAttrList *attrs = pango_attr_list_from_string("0 -1 size 16");
-	gtk_label_set_attributes(GTK_LABEL(lb), attrs);
   	gtk_list_item_set_child (list_item->gobj(), exp);
 }
 
@@ -146,7 +144,7 @@ static void cat_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	
 	GtkWidget *lb = gtk_label_new (NULL);
 	gtk_widget_set_halign(lb, GTK_ALIGN_START);
-	PangoAttrList *attrs = pango_attr_list_from_string("0 -1 font \"Sans 14\"");
+	PangoAttrList *attrs = pango_attr_list_from_string(DEFAULT_APP_ATTR);
 	gtk_label_set_attributes(GTK_LABEL(lb), attrs);
 	gtk_box_append(GTK_BOX(box), ic);
 	gtk_box_append(GTK_BOX(box), lb);
@@ -156,9 +154,20 @@ static void cat_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 }
 
 void catlist_button_clicked(guint position, std::string list_ind, size_t lw_index) {
-	auto nm = dynamic_cast<Gtk::Label*>(dynamic_cast<Gtk::Box*>(kapp.category_views[lw_index]->get_children()[position]->get_children().front())->get_children()[1]);
-	kapp.eui.de = kapp.list[kapp.catlist[list_ind][nm->get_label()]];
+	if (std::get<0>(kapp.selection) > 0) {
+		auto old_box = dynamic_cast<Gtk::Box*>(kapp.category_views[std::get<0>(kapp.selection)]->get_children()[std::get<1>(kapp.selection)]->get_children().front());
+		auto old_label = dynamic_cast<Gtk::Label*>(old_box->get_children()[1]);
+		auto attrs = Pango::AttrList::from_string(DEFAULT_APP_ATTR", 0 -1 weigh normal");
+		old_label->set_attributes(attrs);
+	}
+	
+	auto new_box = dynamic_cast<Gtk::Box*>(kapp.category_views[lw_index]->get_children()[position]->get_children().front());
+	auto new_label = dynamic_cast<Gtk::Label*>(new_box->get_children()[1]);
+	auto attrs_bold = Pango::AttrList::from_string(DEFAULT_APP_ATTR", 0 -1 weigh bold");
+	new_label->set_attributes(attrs_bold);
+	kapp.eui.de = kapp.list[kapp.catlist[list_ind][new_label->get_label()]];
 	entry_ui();
+	kapp.selection = {lw_index, position};
 }
 
 static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name) {
@@ -183,7 +192,9 @@ static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	auto lb = dynamic_cast<Gtk::Expander *>(list_item.get()->get_child());
 	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
 	lb->set_label(strobj.c_str());
-	
+	auto attrs = Pango::AttrList::from_string("0 -1 font \"Sans 12\"");
+	auto label = dynamic_cast<Gtk::Label*>(lb->get_label_widget());
+	label->set_attributes(attrs);
 	auto gsl = Gtk::StringList::create();
 	for (auto const& [name, ind] : kapp.catlist[strobj]) {
 		if (!kapp.etxt->get_text().empty()) {
@@ -243,6 +254,7 @@ void search_entry_changed(void) {
 	kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
 	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, std::placeholders::_1, !filter_text.empty()));
 	kapp.lui.listem->set_model(kapp.lui.ns);
+	kapp.selection = {0, 0};
 }
 
 void init_ui() {
