@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <cstdlib>
 #include <exception>
 #include <iostream>
 #include <gtkmm.h>
@@ -9,12 +10,9 @@
 #include <unordered_map>
 #include <vector>
 #include <functional>
+#include <stdlib.h>
 
 #include "desktop.cpp"
-#include "glibmm/varianttype.h"
-#include "gtkmm/listitem.h"
-#include "gtkmm/singleselection.h"
-
 #define DEFAULT_APP_ATTR "0 -1 font \"Sans 14\""
 
 struct ListUi {
@@ -33,6 +31,7 @@ struct EntryUi {
 	Gtk::CheckButton *terminal_check, *dgpu_check, *single_main_window;
 	Gtk::DropDown *type_drop;
 	Gtk::Image *icon;
+	Gtk::Button *open_file_button, *save_button;
 };
 
 typedef std::map<std::string, std::map<std::string, size_t>> CategoryEntries;
@@ -75,6 +74,18 @@ std::string de_val(deskentry::DesktopEntry de, std::string key) {
         return de.pe["Desktop Entry"][key].strval;
 }
 
+bool insensitive_search(std::string filter_text, std::string a) {
+	std::transform(a.begin(), a.end(), a.begin(),
+    			[](unsigned char c){ return std::tolower(c); });
+	std::transform(filter_text.begin(), filter_text.end(), filter_text.begin(),
+		[](unsigned char c){ return std::tolower(c); });
+	return a.starts_with(filter_text);
+}
+
+void open_file_clicked() {
+	system(("xdg-open "+kapp.eui.de.path).c_str());
+}
+
 void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 	eui->filename_entry->set_text(de_val(de, "Name"));
 	eui->exec_entry->set_text(de_val(de, "Exec"));
@@ -106,6 +117,7 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 		eui->icon->set_from_resource(de.pe["Desktop Entry"]["Icon"].strval);
 }
 
+
 void entry_ui() {
 	kapp.eui.filename_entry = kapp.builder->get_widget<Gtk::Entry>("filename_entry");
 	kapp.eui.exec_entry = kapp.builder->get_widget<Gtk::Entry>("exec_entry");
@@ -118,17 +130,9 @@ void entry_ui() {
 	kapp.eui.path_entry = kapp.builder->get_widget<Gtk::Entry>("path_entry");
 	kapp.eui.single_main_window = kapp.builder->get_widget<Gtk::CheckButton>("single_main_window");
 	kapp.eui.dgpu_check = kapp.builder->get_widget<Gtk::CheckButton>("dgpu_check");
-	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
-}
-
-void button_clicked(GtkWidget *widget, gpointer data) {
-	Glib::ustring strs = gtk_button_get_label(GTK_BUTTON(widget));
-	size_t pos = 0;
-	for(size_t i = 0; i < kapp.lui.strings.size(); i++)
-		if (kapp.lui.strings[i].data() == strs)
-			pos = i;
-	kapp.eui.de = kapp.list.at(pos == Glib::ustring::npos ? 0 : pos);
-	entry_ui();
+	kapp.eui.open_file_button = kapp.builder->get_widget<Gtk::Button>("open_file_button");
+	kapp.eui.save_button = kapp.builder->get_widget<Gtk::Button>("save_button");
+	kapp.eui.open_file_button->signal_clicked().connect(sigc::ptr_fun(open_file_clicked));
 }
 
 static void lui_setup(const Glib::RefPtr<Gtk::ListItem>& list_item, bool expand) {
@@ -167,7 +171,7 @@ void catlist_button_clicked(const Glib::RefPtr<Gtk::ListItem>& list_item, std::s
 		kapp.models[kapp.old_lw]->set_selected(-1);
 	}
 	kapp.old_lw = lw_index;
-	entry_ui();
+	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 }
 
 static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name, size_t lw_index) {
@@ -184,7 +188,7 @@ static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string c
 	list_item->connect_property_changed("selected", sp_fn);
 	if (kapp.etxt->get_text_length() > 0) { // Filter
 		std::string a = strobj.c_str();
-		if (!a.starts_with(kapp.etxt->get_text().c_str())) {
+		if (!insensitive_search(kapp.etxt->get_text().c_str(), a)) {
 			list_item->unset_child();
 		}
 	}
@@ -200,7 +204,7 @@ static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	auto gsl = Gtk::StringList::create();
 	for (auto const& [name, ind] : kapp.catlist[strobj]) {
 		if (!kapp.etxt->get_text().empty()) {
-			if (!name.starts_with(kapp.etxt->get_text().c_str()))
+			if (!insensitive_search(kapp.etxt->get_text().c_str(), name))
 				continue;
 		}
 		gsl->append(name);
@@ -217,6 +221,7 @@ static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	kapp.category_views[kapp.category_views.size()-1]->set_factory(fac);
 	kapp.category_views[kapp.category_views.size()-1]->set_single_click_activate(false);
 	lb->set_child(*dynamic_cast<Gtk::Widget*>(kapp.category_views[kapp.category_views.size()-1]));
+	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 }
 
 void lui_unbind(const Glib::RefPtr<Gtk::ListItem> &li) {
@@ -236,13 +241,7 @@ void search_entry_changed(void) {
 	std::string filter_text = kapp.etxt->get_text();
 	std::map<std::string, bool> ce;
 	for (size_t i = 0; i < kapp.list.size(); i++) {
-		auto str = kapp.list[i].pe["Desktop Entry"]["Name"].strval;
-		// transform to lower case
-		std::transform(str.begin(), str.end(), str.begin(),
-    			[](unsigned char c){ return std::tolower(c); });
-		std::transform(filter_text.begin(), filter_text.end(), filter_text.begin(),
-    			[](unsigned char c){ return std::tolower(c); });
-		if (str.starts_with(filter_text)) {
+		if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"].strval)) {
 			for (size_t j = 0; j < kapp.list[i].Categories.size(); j++) {
 				ce[kapp.list[i].Categories[j]] = true;
 			}
@@ -261,7 +260,10 @@ void search_entry_changed(void) {
 void init_ui() {
 	kapp.main_window = kapp.builder->get_widget<Gtk::Window>("main_window");
 	kapp.main_window->set_application(kapp.app);
-
+	
+	// Initialize "sidepanel"
+	entry_ui();
+	
 	kapp.etxt = kapp.builder->get_widget<Gtk::Entry>("etxt");
 	kapp.etxt->signal_changed().connect(sigc::ptr_fun(search_entry_changed));
 

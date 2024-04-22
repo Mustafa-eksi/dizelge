@@ -186,12 +186,17 @@ Window main_window {
         valign: end;
         vexpand: true;
         halign: end;
-        Button {
+        Button open_file_button {
+          margin-end: 8;
+          icon-name: "search-folder-symbolic";
+          label: "Open file";
+        }
+        Button save_button {
           styles [
             "suggested-action",
           ]
           icon-name: "checkmark";
-          label: "save";
+          label: "Save";
         }
       }
     }

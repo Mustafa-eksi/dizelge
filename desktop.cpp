@@ -47,6 +47,7 @@ typedef struct DesktopEntry {
         bool isGicon, onMenu, onDesktop, onTaskbar, HiddenFilter, NoDisplayFilter,
              OnlyShowInFilter, TryExecFilter;
         CatList Categories;
+        std::string path;
 } DesktopEntry;
 
 void print_unde(UnparsedEntry unde) {
@@ -238,6 +239,7 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
                         .OnlyShowInFilter = parse_desktop_filter(pe, xdg_env),
                         .TryExecFilter = try_exec(pe),
                         .Categories = parse_categories(pe),
+                        .path = filepath,
                 };
                 
                 return de;
