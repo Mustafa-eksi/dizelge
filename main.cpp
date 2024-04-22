@@ -158,6 +158,8 @@ static void cat_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 }
 
 void catlist_button_clicked(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string list_ind, size_t lw_index) {
+	if (!list_item->get_selected())
+		return;
 	auto new_box = dynamic_cast<Gtk::Box*>(list_item->get_child());
 	auto new_label = dynamic_cast<Gtk::Label*>(new_box->get_children()[1]);
 	kapp.eui.de = kapp.list[kapp.catlist[list_ind][new_label->get_label()]];
