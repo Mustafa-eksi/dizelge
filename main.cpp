@@ -46,9 +46,9 @@ struct KisayolApp {
 	Gtk::Entry *etxt;
 	std::vector<deskentry::DesktopEntry> list;
 	CategoryEntries catlist;
-	std::vector<Gtk::ListView*> category_views;
-	std::vector<Glib::RefPtr<Gtk::SingleSelection>> models;
-	size_t old_lw;
+	std::map<std::string, Gtk::ListView*> category_views;
+	std::map<std::string, Glib::RefPtr<Gtk::SingleSelection>> models;
+	std::string old_lw;
 	ListUi lui;
 	EntryUi eui;
 	char *XDG_ENV;
@@ -148,7 +148,9 @@ static void lui_setup(const Glib::RefPtr<Gtk::ListItem>& list_item, bool expand)
 }
 
 void lui_teardown(const Glib::RefPtr<Gtk::ListItem> &li) {
+	auto c = dynamic_cast<Gtk::Expander*>(li->get_child());
 	li->unset_child();
+	delete c;
 }
 
 static void cat_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
@@ -167,13 +169,19 @@ static void cat_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
   	gtk_list_item_set_child (list_item->gobj(), box);
 }
 
+static void cat_teardown(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+	auto box = dynamic_cast<Gtk::Box*>(list_item->get_child());
+	list_item->unset_child();
+	delete box;
+}
+
 void catlist_button_clicked(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string list_ind, size_t lw_index) {
 	if (!list_item->get_selected())
 		return;
 	auto new_box = dynamic_cast<Gtk::Box*>(list_item->get_child());
 	auto new_label = dynamic_cast<Gtk::Label*>(new_box->get_children()[1]);
 	kapp.eui.de = kapp.list[kapp.catlist[list_ind][new_label->get_label()]];
-	if (kapp.old_lw < kapp.models.size() && kapp.old_lw >= 0 && kapp.old_lw != lw_index) {
+	if (kapp.models[kapp.old_lw] && kapp.old_lw != list_ind) {
 		kapp.models[kapp.old_lw]->set_selected(-1);
 	}
 	kapp.old_lw = lw_index;
@@ -198,6 +206,16 @@ static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string c
 	list_item->connect_property_changed("selected", sp_fn);
 }
 
+static void cat_unbind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name, size_t lw_index) {
+	// Get the name of the item
+	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
+	// Get the widget created in cat_setup.
+	auto box = dynamic_cast<Gtk::Box*>(list_item->get_child());
+	auto lb = dynamic_cast<Gtk::Label*>(box->get_children()[1]);
+	auto icon = dynamic_cast<Gtk::Image*>(box->get_children()[0]);
+	lb->set_label("");
+}
+
 static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	auto lb = dynamic_cast<Gtk::Expander *>(list_item.get()->get_child());
 	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
@@ -213,25 +231,28 @@ static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 		}
 		gsl->append(name);
 	}
-	auto ns = Gtk::SingleSelection::create();
-	ns->set_autoselect(false);
-	ns->set_model(gsl);
-	kapp.models.push_back(ns);
+	kapp.models[strobj] = Gtk::SingleSelection::create();
+	kapp.models[strobj]->set_autoselect(false);
+	kapp.models[strobj]->set_model(gsl);
 	auto fac = Gtk::SignalListItemFactory::create();
 	fac->signal_setup().connect(sigc::ptr_fun(cat_setup));
 	fac->signal_bind().connect(std::bind(cat_bind, std::placeholders::_1, strobj, kapp.category_views.size()));
-	kapp.category_views.push_back(new Gtk::ListView());
-	kapp.category_views[kapp.category_views.size()-1]->set_model(kapp.models.back());
-	kapp.category_views[kapp.category_views.size()-1]->set_factory(fac);
-	kapp.category_views[kapp.category_views.size()-1]->set_single_click_activate(false);
-	lb->set_child(*dynamic_cast<Gtk::Widget*>(kapp.category_views[kapp.category_views.size()-1]));
+	fac->signal_unbind().connect(std::bind(cat_unbind, std::placeholders::_1, strobj, kapp.category_views.size()));
+	fac->signal_teardown().connect(sigc::ptr_fun(cat_teardown));
+	kapp.category_views[strobj] = new Gtk::ListView();
+	kapp.category_views[strobj]->set_model(kapp.models[strobj]);
+	kapp.category_views[strobj]->set_factory(fac);
+	kapp.category_views[strobj]->set_single_click_activate(false);
+	lb->set_child(*dynamic_cast<Gtk::Widget*>(kapp.category_views[strobj]));
 	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 }
 
 void lui_unbind(const Glib::RefPtr<Gtk::ListItem> &li) {
 	auto lb = dynamic_cast<Gtk::Expander *>(li.get()->get_child());
+	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (li->gobj())));
 	lb->unset_child();
-	lb->set_label("");
+	delete lb;
+	delete kapp.category_views[strobj];
 }
 
 static void add_button_clicked() {
