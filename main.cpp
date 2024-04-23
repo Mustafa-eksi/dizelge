@@ -86,13 +86,22 @@ void open_file_clicked() {
 	system(("xdg-open "+kapp.eui.de.path).c_str());
 }
 
+void set_icon(Gtk::Image* img, std::string icon_str) {
+	if (icon_str == "")
+		img->set_from_icon_name("applications-other");
+	else if (icon_str.find("/") == Glib::ustring::npos)
+		img->set_from_icon_name(icon_str);
+	else
+		gtk_image_set_from_file(img->gobj(), icon_str.c_str());
+}
+
 void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 	eui->filename_entry->set_text(de_val(de, "Name"));
 	eui->exec_entry->set_text(de_val(de, "Exec"));
-	eui->comment_entry->set_text(de.pe["Desktop Entry"]["Comment"].strval);
-	eui->categories_entry->set_text(de.pe["Desktop Entry"]["Categories"].strval);
-	eui->generic_name_entry->set_text(de.pe["Desktop Entry"]["GenericName"].strval);
-	eui->path_entry->set_text(de.pe["Desktop Entry"]["Path"].strval);
+	eui->comment_entry->set_text(de_val(de, "Comment"));
+	eui->categories_entry->set_text(de_val(de, "Categories"));
+	eui->generic_name_entry->set_text(de_val(de, "GenericName"));
+	eui->path_entry->set_text(de_val(de, "Path"));
 	eui->terminal_check->set_active(de_val(de, "Terminal") == "true");
 	eui->dgpu_check->set_active(de_val(de, "PrefersNonDefaultGPU") == "true");
 	eui->single_main_window->set_active(de_val(de, "SingleMainWindow") == "true");
@@ -109,12 +118,7 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 	eui->type_drop->set_selected(de.type);
 
 	// Set icon
-	if (de.pe["Desktop Entry"]["Icon"].strval == "")
-		eui->icon->set_from_icon_name("applications-other");
-	else if (de.isGicon)
-		eui->icon->set_from_icon_name(de.pe["Desktop Entry"]["Icon"].strval);
-	else
-		eui->icon->set_from_resource(de.pe["Desktop Entry"]["Icon"].strval);
+	set_icon(eui->icon, de_val(de, "Icon"));
 }
 
 
@@ -174,24 +178,22 @@ void catlist_button_clicked(const Glib::RefPtr<Gtk::ListItem>& list_item, std::s
 	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 }
 
+// This is called for each of the items in each of the expanders.
 static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name, size_t lw_index) {
-	auto box = dynamic_cast<Gtk::Box*>(list_item->get_child());
+	// Get the name of the item
 	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
+	// Get the widget created in cat_setup.
+	auto box = dynamic_cast<Gtk::Box*>(list_item->get_child());
 	auto lb = dynamic_cast<Gtk::Label*>(box->get_children()[1]);
 	auto icon = dynamic_cast<Gtk::Image*>(box->get_children()[0]);
 	lb->set_label(strobj);
-	if (kapp.list[kapp.catlist[cat_name][strobj]].isGicon) {
-		icon->set_from_icon_name(kapp.list[kapp.catlist[cat_name][strobj]].pe["Desktop Entry"]["Icon"].strval);
-		icon->set_pixel_size(24);
-	}
+	
+	// Set the icon
+	set_icon(icon, de_val(kapp.list[kapp.catlist[cat_name][strobj]], "Icon"));
+	icon->set_pixel_size(24);
+
 	auto sp_fn = std::bind(catlist_button_clicked, list_item, cat_name, lw_index);
 	list_item->connect_property_changed("selected", sp_fn);
-	if (kapp.etxt->get_text_length() > 0) { // Filter
-		std::string a = strobj.c_str();
-		if (!insensitive_search(kapp.etxt->get_text().c_str(), a)) {
-			list_item->unset_child();
-		}
-	}
 }
 
 static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
