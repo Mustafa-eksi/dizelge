@@ -214,6 +214,9 @@ CatList parse_categories(ParsedEntry pe) {
                         it = it.substr(pos+1);
                         pos = it.find(";");
                 }
+                // Add last element if array doesn't end with a semicolon
+                if (!it.empty())
+                        res.push_back(it);
         } else if (!pe["Desktop Entry"]["Categories"].strval.empty()){
                 res.push_back(pe["Desktop Entry"]["Categories"].strval);
         }

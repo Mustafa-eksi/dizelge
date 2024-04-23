@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <exception>
@@ -7,6 +8,7 @@
 #include <filesystem>
 #include <iostream>
 #include <tuple>
+#include <unistd.h>
 #include <unordered_map>
 #include <vector>
 #include <functional>
@@ -259,6 +261,38 @@ void search_entry_changed(void) {
 	kapp.lui.listem->set_model(kapp.lui.ns);
 }
 
+void scan_folder(std::string folder_path) {
+	size_t tildepos = folder_path.find("~");
+	if (tildepos != std::string::npos) {
+		folder_path = folder_path.replace(tildepos, 1, std::getenv("HOME"));
+	}
+	if (access(folder_path.c_str(), F_OK) != 0) {
+		printf("Folder %s doesn't exist\n", folder_path.c_str());
+		return;
+	}
+	for (const auto & entry : std::filesystem::directory_iterator(folder_path)){
+		try {
+			if (entry.is_directory()) {
+				scan_folder(entry.path());
+				continue;
+			}
+			auto pde = deskentry::parse_file(entry.path(), kapp.XDG_ENV);
+			if(pde.has_value()) {
+				auto pe = pde.value();
+				if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
+					for (size_t i = 0; i < pe.Categories.size(); i++) {
+						kapp.catlist[pe.Categories[i]][pe.pe["Desktop Entry"]["Name"].strval] = kapp.list.size();
+					}
+					kapp.list.push_back(pe);
+				}
+			}
+		} catch (std::exception& e) {
+			printf("!!ERROR!! %s: %s\n", entry.path().c_str(), e.what());
+			return;
+		}
+	}
+}
+
 void init_ui() {
 	kapp.main_window = kapp.builder->get_widget<Gtk::Window>("main_window");
 	kapp.main_window->set_application(kapp.app);
@@ -269,27 +303,23 @@ void init_ui() {
 	kapp.etxt = kapp.builder->get_widget<Gtk::Entry>("etxt");
 	kapp.etxt->signal_changed().connect(sigc::ptr_fun(search_entry_changed));
 
-	for (const auto & entry : std::filesystem::directory_iterator("/usr/share/applications/")){
-		try {
-			auto pde = deskentry::parse_file(entry.path(), kapp.XDG_ENV);
-			if(pde.has_value()) {
-				auto pe = pde.value();
-				if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
-					for (size_t i = 0; i < pe.Categories.size(); i++) {
-						kapp.catlist[pe.Categories[i]][pe.pe["Desktop Entry"]["Name"].strval] = kapp.list.size();
-					}
-					kapp.list.push_back(pe);
-					//kapp.lui.strings.push_back(pe.pe["Desktop Entry"]["Name"].strval);
-				}
-			}
-		} catch (std::exception& e) {
-			printf("!!ERROR!! %s: %s\n", entry.path().c_str(), e.what());
-			return;
-		}
+	std::string datadirs = std::getenv("XDG_DATA_DIRS");
+	if (!datadirs.empty()) {
+		std::string it = datadirs;
+                size_t pos = it.find(":");
+                while (pos != std::string::npos) {
+                        scan_folder(it.substr(0, pos)+"/applications/");
+                        it = it.substr(pos+1);
+                        pos = it.find(":");
+                }
+		scan_folder(it+"/applications/");
 	}
+	scan_folder("~/.local/share/applications/");
+	scan_folder("~/Desktop/");
 	for (auto const& [group, apps] : kapp.catlist) {
 		kapp.lui.strings.push_back(group);
 	}
+	std::sort(kapp.lui.strings.begin(), kapp.lui.strings.end());
 	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings); // gtk_string_list_new ((const char * const *) array);
 	kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl); // gtk_no_selection_new (G_LIST_MODEL (sl));
 	
@@ -305,7 +335,6 @@ void init_ui() {
 		kapp.lui.listem->set_factory(kapp.lui.lif);
 	}
 
-	kapp.ab = kapp.builder->get_widget<Gtk::Button>("add_button");
 	if (kapp.ab)
 		kapp.ab->signal_clicked().connect(sigc::ptr_fun(add_button_clicked));
 
