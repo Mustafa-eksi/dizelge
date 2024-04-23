@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "desktop.cpp"
+#include "sigc++/functors/ptr_fun.h"
 #define DEFAULT_APP_ATTR "0 -1 font \"Sans 14\""
 
 struct ListUi {
@@ -48,6 +49,7 @@ struct KisayolApp {
 	CategoryEntries catlist;
 	std::map<std::string, Gtk::ListView*> category_views;
 	std::map<std::string, Glib::RefPtr<Gtk::SingleSelection>> models;
+	std::map<std::string, Glib::RefPtr<Gtk::SignalListItemFactory>> factories;
 	std::string old_lw;
 	ListUi lui;
 	EntryUi eui;
@@ -86,6 +88,24 @@ bool insensitive_search(std::string filter_text, std::string a) {
 
 void open_file_clicked() {
 	system(("xdg-open "+kapp.eui.de.path).c_str());
+}
+
+void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
+	de->pe["Desktop Entry"]["Name"].strval 			= eui->filename_entry->get_text();
+	de->pe["Desktop Entry"]["Exec"].strval 			= eui->exec_entry->get_text();
+	de->pe["Desktop Entry"]["Comment"].strval 		= eui->comment_entry->get_text();
+	de->pe["Desktop Entry"]["Categories"].strval 		= eui->categories_entry->get_text();
+	de->pe["Desktop Entry"]["GenericName"].strval 		= eui->generic_name_entry->get_text();
+	de->pe["Desktop Entry"]["Path"].strval 			= eui->path_entry->get_text();
+	de->pe["Desktop Entry"]["Terminal"].strval 		= eui->terminal_check->get_active() ? "true" : "false";
+	de->pe["Desktop Entry"]["PrefersNonDefaultGPU"].strval 	= eui->dgpu_check->get_active() ? "true" : "false";
+	de->pe["Desktop Entry"]["SingleMainWindow"].strval 	= eui->single_main_window->get_active() ? "true" : "false";
+}
+
+void save_button_clicked() {
+	sync_pe(&kapp.eui, &kapp.eui.de);
+	auto de = kapp.eui.de;
+	deskentry::write_to_file(de.pe, de.path);
 }
 
 void set_icon(Gtk::Image* img, std::string icon_str) {
@@ -138,6 +158,7 @@ void entry_ui() {
 	kapp.eui.dgpu_check = kapp.builder->get_widget<Gtk::CheckButton>("dgpu_check");
 	kapp.eui.open_file_button = kapp.builder->get_widget<Gtk::Button>("open_file_button");
 	kapp.eui.save_button = kapp.builder->get_widget<Gtk::Button>("save_button");
+	kapp.eui.save_button->signal_clicked().connect(sigc::ptr_fun(save_button_clicked));
 	kapp.eui.open_file_button->signal_clicked().connect(sigc::ptr_fun(open_file_clicked));
 }
 
@@ -165,8 +186,6 @@ static void cat_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	gtk_box_append(GTK_BOX(box), ic);
 	gtk_box_append(GTK_BOX(box), lb);
   	gtk_list_item_set_child (list_item->gobj(), box);
-
-  	gtk_list_item_set_child (list_item->gobj(), box);
 }
 
 static void cat_teardown(const Glib::RefPtr<Gtk::ListItem>& list_item) {
@@ -175,23 +194,21 @@ static void cat_teardown(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	delete box;
 }
 
-void catlist_button_clicked(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string list_ind, size_t lw_index) {
+void catlist_button_clicked(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string list_ind, std::string appname) {
 	if (!list_item->get_selected())
 		return;
-	auto new_box = dynamic_cast<Gtk::Box*>(list_item->get_child());
-	auto new_label = dynamic_cast<Gtk::Label*>(new_box->get_children()[1]);
-	kapp.eui.de = kapp.list[kapp.catlist[list_ind][new_label->get_label()]];
-	if (kapp.models[kapp.old_lw] && kapp.old_lw != list_ind) {
+	kapp.eui.de = kapp.list[kapp.catlist[list_ind][appname]];
+	if (kapp.models.contains(kapp.old_lw) && kapp.old_lw != list_ind) {
 		kapp.models[kapp.old_lw]->set_selected(-1);
 	}
-	kapp.old_lw = lw_index;
+	kapp.old_lw = list_ind;
 	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 }
 
 // This is called for each of the items in each of the expanders.
-static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name, size_t lw_index) {
+static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name) {
 	// Get the name of the item
-	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
+	std::string strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
 	// Get the widget created in cat_setup.
 	auto box = dynamic_cast<Gtk::Box*>(list_item->get_child());
 	auto lb = dynamic_cast<Gtk::Label*>(box->get_children()[1]);
@@ -202,17 +219,16 @@ static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string c
 	set_icon(icon, de_val(kapp.list[kapp.catlist[cat_name][strobj]], "Icon"));
 	icon->set_pixel_size(24);
 
-	auto sp_fn = std::bind(catlist_button_clicked, list_item, cat_name, lw_index);
+	auto sp_fn = std::bind(catlist_button_clicked, list_item, cat_name, strobj);
 	list_item->connect_property_changed("selected", sp_fn);
 }
 
-static void cat_unbind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name, size_t lw_index) {
+static void cat_unbind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name) {
 	// Get the name of the item
 	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
 	// Get the widget created in cat_setup.
 	auto box = dynamic_cast<Gtk::Box*>(list_item->get_child());
 	auto lb = dynamic_cast<Gtk::Label*>(box->get_children()[1]);
-	auto icon = dynamic_cast<Gtk::Image*>(box->get_children()[0]);
 	lb->set_label("");
 }
 
@@ -234,15 +250,18 @@ static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	kapp.models[strobj] = Gtk::SingleSelection::create();
 	kapp.models[strobj]->set_autoselect(false);
 	kapp.models[strobj]->set_model(gsl);
-	auto fac = Gtk::SignalListItemFactory::create();
-	fac->signal_setup().connect(sigc::ptr_fun(cat_setup));
-	fac->signal_bind().connect(std::bind(cat_bind, std::placeholders::_1, strobj, kapp.category_views.size()));
-	fac->signal_unbind().connect(std::bind(cat_unbind, std::placeholders::_1, strobj, kapp.category_views.size()));
-	fac->signal_teardown().connect(sigc::ptr_fun(cat_teardown));
+
+	kapp.factories[strobj] = Gtk::SignalListItemFactory::create();
+	kapp.factories[strobj]->signal_setup().connect(sigc::ptr_fun(cat_setup));
+	kapp.factories[strobj]->signal_bind().connect(std::bind(cat_bind, std::placeholders::_1, strobj));
+	kapp.factories[strobj]->signal_unbind().connect(std::bind(cat_unbind, std::placeholders::_1, strobj));
+	kapp.factories[strobj]->signal_teardown().connect(sigc::ptr_fun(cat_teardown));
+
 	kapp.category_views[strobj] = new Gtk::ListView();
 	kapp.category_views[strobj]->set_model(kapp.models[strobj]);
-	kapp.category_views[strobj]->set_factory(fac);
+	kapp.category_views[strobj]->set_factory(kapp.factories[strobj]);
 	kapp.category_views[strobj]->set_single_click_activate(false);
+
 	lb->set_child(*dynamic_cast<Gtk::Widget*>(kapp.category_views[strobj]));
 	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 }
@@ -345,7 +364,7 @@ void init_ui() {
 	kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl); // gtk_no_selection_new (G_LIST_MODEL (sl));
 	
 	kapp.lui.lif = Gtk::SignalListItemFactory::create();
-	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, std::placeholders::_1, false));
+	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, std::placeholders::_1, true));
 	kapp.lui.lif->signal_bind().connect(sigc::ptr_fun(lui_bind));
 	kapp.lui.lif->signal_unbind().connect(sigc::ptr_fun(lui_unbind));
 	kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(lui_teardown));

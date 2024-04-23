@@ -1,4 +1,4 @@
-#include "glibmm/ustring.h"
+#include <cstdlib>
 #include <exception>
 #include <ios>
 #include <optional>
@@ -76,8 +76,7 @@ void print_pe(ParsedEntry pe) {
         {
                 printf("Group: %s\n", group.c_str());
                 for (auto const& [pkey, pval] : pg) {
-                        printf("\t'%s' = '%s' %s =\"%s\"\n", pkey.c_str(), type_to_str(pval.type).c_str(), pval.isArray ? "(array)" : "",
-                                pval.type == ValueType::String || pval.type == ValueType::LocaleString ? pval.strval.c_str() : "");
+                        printf("\t'%s' = '%s' %s =\"%s\"\n", pkey.c_str(), type_to_str(pval.type).c_str(), pval.isArray ? "(array)" : "", pval.strval.c_str());
                 }
         }
 }
@@ -191,9 +190,9 @@ enum EntryType parse_type(std::string typestr) {
 bool parse_desktop_filter(ParsedEntry pe, std::string xdg_env) {
         bool res = false;
         if (pe["Desktop Entry"]["OnlyShowIn"].strval != "")
-                res = pe["Desktop Entry"]["OnlyShowIn"].strval.find(xdg_env) != Glib::ustring::npos;
+                res = pe["Desktop Entry"]["OnlyShowIn"].strval.find(xdg_env) != std::string::npos;
         if (pe["Desktop Entry"]["NotShowIn"].strval != "")
-                res = pe["Desktop Entry"]["NotShowIn"].strval.find(xdg_env) == Glib::ustring::npos;
+                res = pe["Desktop Entry"]["NotShowIn"].strval.find(xdg_env) == std::string::npos;
         return res;
 }
 
@@ -249,5 +248,27 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
                 return {};
         }
 }
+
+void write_to_file(ParsedEntry pe, std::string out_path) {
+        std::string output_file = "#!/usr/bin/env xdg-open\n";
+        for (auto const& [group, pg] : pe)
+        {
+                output_file += "["+group+"]\n";
+                for (auto const& [pkey, pval] : pg) {
+                        if (pval.strval.empty())
+                                continue;
+                        output_file += pkey+"="+pval.strval+"\n";
+                }
+                output_file += "\n";
+        }
+        if (access(out_path.c_str(), W_OK) != 0) {
+                system(("pkexec bash -c \"echo \\\""+output_file+"\\\" > "+out_path+"\"").c_str());
+                return;
+        }
+        std::ofstream OutStream(out_path);
+        OutStream << output_file;
+        OutStream.close();
+}
+
 
 }
