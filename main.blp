@@ -14,16 +14,16 @@ Window main_window {
 
       Box {
         margin-start: 5;
-        orientation: horizontal;
+        orientation: vertical;
         margin-bottom: 10;
-
+        spacing: 10;
+        DropDown paths_to_scan {
+          hexpand: false;
+          width-request: 0;
+        }
         Entry etxt {
           placeholder-text: 'isim yaz';
           hexpand: true;
-        }
-
-        DropDown paths_to_scan {
-          
         }
       }
 

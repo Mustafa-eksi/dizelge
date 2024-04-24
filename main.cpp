@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "desktop.cpp"
+#include "gtkmm/dropdown.h"
 #include "sigc++/functors/ptr_fun.h"
 #define DEFAULT_APP_ATTR "0 -1 font \"Sans 14\""
 
@@ -45,6 +46,7 @@ struct KisayolApp {
 	Gtk::Window *main_window, *entry_window;
 	Gtk::Button *ab;
 	Gtk::Entry *etxt;
+	Gtk::DropDown *folder_dd;
 	std::vector<deskentry::DesktopEntry> list;
 	CategoryEntries catlist;
 	std::map<std::string, Gtk::ListView*> category_views;
@@ -53,6 +55,8 @@ struct KisayolApp {
 	std::string old_lw;
 	ListUi lui;
 	EntryUi eui;
+	std::vector<Glib::ustring> scanned_folders;
+	size_t selected_folder;
 	char *XDG_ENV;
 };
 
@@ -63,14 +67,13 @@ struct KisayolApp kapp = { 0 };
 
 static void dd_setup(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	GtkWidget *lb = gtk_label_new (NULL);
+	gtk_widget_set_halign(lb, GTK_ALIGN_START);
   	gtk_list_item_set_child (list_item->gobj(), lb);
 }
 
 static void dd_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	GtkWidget *lb = gtk_list_item_get_child (list_item->gobj());
-	/* Strobj is owned by the instance. Caller mustn't change or destroy it. */
 	GtkStringObject *strobj = GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj()));
-	/* The string returned by gtk_string_object_get_string is owned by the instance. */
 	gtk_label_set_text (GTK_LABEL(lb), gtk_string_object_get_string (strobj));
 }
 
@@ -301,14 +304,15 @@ void search_entry_changed(void) {
 	kapp.lui.listem->set_model(kapp.lui.ns);
 }
 
-void scan_folder(std::string folder_path) {
+bool scan_folder(std::string folder_path) {
 	size_t tildepos = folder_path.find("~");
+	bool res = false;
 	if (tildepos != std::string::npos) {
 		folder_path = folder_path.replace(tildepos, 1, std::getenv("HOME"));
 	}
 	if (access(folder_path.c_str(), F_OK) != 0) {
-		printf("Folder %s doesn't exist\n", folder_path.c_str());
-		return;
+		//printf("Folder %s doesn't exist\n", folder_path.c_str());
+		return res;
 	}
 	for (const auto & entry : std::filesystem::directory_iterator(folder_path)){
 		try {
@@ -323,13 +327,61 @@ void scan_folder(std::string folder_path) {
 					for (size_t i = 0; i < pe.Categories.size(); i++) {
 						kapp.catlist[pe.Categories[i]][pe.pe["Desktop Entry"]["Name"].strval] = kapp.list.size();
 					}
+					res = true;
 					kapp.list.push_back(pe);
 				}
 			}
 		} catch (std::exception& e) {
 			printf("!!ERROR!! %s: %s\n", entry.path().c_str(), e.what());
-			return;
+			return false;
 		}
+	}
+	return res;
+}
+
+void scan_combined() {
+	kapp.scanned_folders.push_back("Combined");
+	std::string datadirs = std::getenv("XDG_DATA_DIRS");
+	if (!datadirs.empty()) {
+		std::string it = datadirs;
+                size_t pos = it.find(":");
+                while (pos != std::string::npos) {
+                        if (scan_folder(it.substr(0, pos)+"/applications/")) {
+				kapp.scanned_folders.push_back(it.substr(0, pos)+"/applications/");
+			}
+                        it = it.substr(pos+1);
+                        pos = it.find(":");
+                }
+		if (scan_folder(it+"/applications/")) {
+			kapp.scanned_folders.push_back(it+"/applications/");
+		}
+	}
+	scan_folder("~/.local/share/applications/");
+	kapp.scanned_folders.push_back("~/.local/share/applications/");
+	scan_folder("~/Desktop/");
+	kapp.scanned_folders.push_back("~/Desktop/");
+}
+
+void folder_dd_select() {
+	size_t new_folder = kapp.folder_dd->get_selected();
+	if (kapp.selected_folder != new_folder) {
+		kapp.catlist.clear();
+		kapp.list.clear();
+		kapp.lui.strings.clear();
+		if (new_folder == 0) {
+			kapp.scanned_folders.clear();
+			scan_combined();
+		} else {
+			scan_folder(kapp.scanned_folders[new_folder]);
+		}
+		for (auto const& [group, apps] : kapp.catlist) {
+			kapp.lui.strings.push_back(group);
+		}
+		std::sort(kapp.lui.strings.begin(), kapp.lui.strings.end());
+		kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
+		kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
+		kapp.lui.listem->set_model(kapp.lui.ns);
+		kapp.selected_folder = new_folder;
 	}
 }
 
@@ -343,19 +395,7 @@ void init_ui() {
 	kapp.etxt = kapp.builder->get_widget<Gtk::Entry>("etxt");
 	kapp.etxt->signal_changed().connect(sigc::ptr_fun(search_entry_changed));
 
-	std::string datadirs = std::getenv("XDG_DATA_DIRS");
-	if (!datadirs.empty()) {
-		std::string it = datadirs;
-                size_t pos = it.find(":");
-                while (pos != std::string::npos) {
-                        scan_folder(it.substr(0, pos)+"/applications/");
-                        it = it.substr(pos+1);
-                        pos = it.find(":");
-                }
-		scan_folder(it+"/applications/");
-	}
-	scan_folder("~/.local/share/applications/");
-	scan_folder("~/Desktop/");
+	scan_combined();
 	for (auto const& [group, apps] : kapp.catlist) {
 		kapp.lui.strings.push_back(group);
 	}
@@ -364,7 +404,7 @@ void init_ui() {
 	kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl); // gtk_no_selection_new (G_LIST_MODEL (sl));
 	
 	kapp.lui.lif = Gtk::SignalListItemFactory::create();
-	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, std::placeholders::_1, true));
+	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, std::placeholders::_1, false));
 	kapp.lui.lif->signal_bind().connect(sigc::ptr_fun(lui_bind));
 	kapp.lui.lif->signal_unbind().connect(sigc::ptr_fun(lui_unbind));
 	kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(lui_teardown));
@@ -374,6 +414,18 @@ void init_ui() {
 		kapp.lui.listem->set_model(kapp.lui.ns);
 		kapp.lui.listem->set_factory(kapp.lui.lif);
 	}
+
+	kapp.folder_dd = kapp.builder->get_widget<Gtk::DropDown>("paths_to_scan");
+	auto ddsl = Gtk::StringList::create(kapp.scanned_folders);
+	auto ddss = Gtk::SingleSelection::create(ddsl);
+	auto factory = Gtk::SignalListItemFactory::create();
+	factory->signal_setup().connect(sigc::ptr_fun(dd_setup));
+	factory->signal_bind().connect(sigc::ptr_fun(dd_bind));
+	
+	kapp.folder_dd->set_model(ddss);
+	kapp.folder_dd->set_factory(factory);
+	kapp.folder_dd->set_selected(0);
+	kapp.folder_dd->connect_property_changed("selected", sigc::ptr_fun(folder_dd_select));
 
 	if (kapp.ab)
 		kapp.ab->signal_clicked().connect(sigc::ptr_fun(add_button_clicked));
