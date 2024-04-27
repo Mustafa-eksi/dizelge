@@ -15,7 +15,6 @@
 #include <stdlib.h>
 
 #include "desktop.cpp"
-#include "gtkmm/dropdown.h"
 #include "sigc++/functors/ptr_fun.h"
 #define DEFAULT_APP_ATTR "0 -1 font \"Sans 14\""
 
@@ -43,8 +42,8 @@ typedef std::map<std::string, std::map<std::string, size_t>> CategoryEntries;
 struct KisayolApp {
 	Glib::RefPtr<Gtk::Application> app;
 	Glib::RefPtr<Gtk::Builder> builder;
-	Gtk::Window *main_window, *entry_window;
-	Gtk::Button *ab;
+	Gtk::Window *main_window, *entry_window, *new_window;
+	Gtk::Button *ab, *add_new_button;
 	Gtk::Entry *etxt;
 	Gtk::DropDown *folder_dd;
 	std::vector<deskentry::DesktopEntry> list;
@@ -148,19 +147,20 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 
 
 void entry_ui() {
-	kapp.eui.filename_entry = kapp.builder->get_widget<Gtk::Entry>("filename_entry");
-	kapp.eui.exec_entry = kapp.builder->get_widget<Gtk::Entry>("exec_entry");
-	kapp.eui.terminal_check = kapp.builder->get_widget<Gtk::CheckButton>("terminal_check");
-	kapp.eui.type_drop = kapp.builder->get_widget<Gtk::DropDown>("type_drop");
-	kapp.eui.icon = kapp.builder->get_widget<Gtk::Image>("app_icon");
-	kapp.eui.comment_entry = kapp.builder->get_widget<Gtk::Entry>("comment_entry");
-	kapp.eui.categories_entry = kapp.builder->get_widget<Gtk::Entry>("categories_entry");
-	kapp.eui.generic_name_entry = kapp.builder->get_widget<Gtk::Entry>("generic_name_entry");
-	kapp.eui.path_entry = kapp.builder->get_widget<Gtk::Entry>("path_entry");
-	kapp.eui.single_main_window = kapp.builder->get_widget<Gtk::CheckButton>("single_main_window");
-	kapp.eui.dgpu_check = kapp.builder->get_widget<Gtk::CheckButton>("dgpu_check");
-	kapp.eui.open_file_button = kapp.builder->get_widget<Gtk::Button>("open_file_button");
-	kapp.eui.save_button = kapp.builder->get_widget<Gtk::Button>("save_button");
+	kapp.eui.terminal_check 	= kapp.builder->get_widget<Gtk::CheckButton>("terminal_check");
+	kapp.eui.single_main_window 	= kapp.builder->get_widget<Gtk::CheckButton>("single_main_window");
+	kapp.eui.dgpu_check 		= kapp.builder->get_widget<Gtk::CheckButton>("dgpu_check");
+	kapp.eui.type_drop 		= kapp.builder->get_widget<Gtk::DropDown>("type_drop");
+	kapp.eui.open_file_button 	= kapp.builder->get_widget<Gtk::Button>("open_file_button");
+	kapp.eui.save_button 		= kapp.builder->get_widget<Gtk::Button>("save_button");
+	kapp.eui.filename_entry 	= kapp.builder->get_widget<Gtk::Entry>("filename_entry");
+	kapp.eui.exec_entry 		= kapp.builder->get_widget<Gtk::Entry>("exec_entry");
+	kapp.eui.comment_entry 		= kapp.builder->get_widget<Gtk::Entry>("comment_entry");
+	kapp.eui.categories_entry 	= kapp.builder->get_widget<Gtk::Entry>("categories_entry");
+	kapp.eui.generic_name_entry 	= kapp.builder->get_widget<Gtk::Entry>("generic_name_entry");
+	kapp.eui.path_entry 		= kapp.builder->get_widget<Gtk::Entry>("path_entry");
+	kapp.eui.icon 			= kapp.builder->get_widget<Gtk::Image>("app_icon");
+
 	kapp.eui.save_button->signal_clicked().connect(sigc::ptr_fun(save_button_clicked));
 	kapp.eui.open_file_button->signal_clicked().connect(sigc::ptr_fun(open_file_clicked));
 }
@@ -385,6 +385,15 @@ void folder_dd_select() {
 	}
 }
 
+void new_ui() {
+	
+}
+
+void add_new_button_clicked(void) {
+	kapp.new_window->show();
+	new_ui();
+}
+
 void init_ui() {
 	kapp.main_window = kapp.builder->get_widget<Gtk::Window>("main_window");
 	kapp.main_window->set_application(kapp.app);
@@ -426,6 +435,13 @@ void init_ui() {
 	kapp.folder_dd->set_factory(factory);
 	kapp.folder_dd->set_selected(0);
 	kapp.folder_dd->connect_property_changed("selected", sigc::ptr_fun(folder_dd_select));
+	
+	kapp.new_window = kapp.builder->get_widget<Gtk::Window>("new_desktop_window");
+	kapp.new_window->set_application(kapp.app);
+	kapp.new_window->set_hide_on_close(true);
+
+	kapp.add_new_button = kapp.builder->get_widget<Gtk::Button>("add_new_button");
+	kapp.add_new_button->signal_clicked().connect(&add_new_button_clicked);
 
 	if (kapp.ab)
 		kapp.ab->signal_clicked().connect(sigc::ptr_fun(add_button_clicked));

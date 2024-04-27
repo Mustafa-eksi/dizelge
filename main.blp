@@ -21,9 +21,16 @@ Window main_window {
           hexpand: false;
           width-request: 0;
         }
-        Entry etxt {
-          placeholder-text: 'isim yaz';
-          hexpand: true;
+        Box {
+          orientation: horizontal;
+          spacing: 10;
+          Entry etxt {
+            placeholder-text: 'isim yaz';
+            hexpand: true;
+          }
+          Button add_new_button {
+            label: "+";
+          }
         }
       }
 
@@ -63,7 +70,6 @@ Window main_window {
           hexpand: true;
           orientation: horizontal;
           margin-top: 12;
-
           Label {
             margin-end: 12;
             label: "Type:";
@@ -199,5 +205,13 @@ Window main_window {
       }
     }
   }
+  }
+}
+
+Window new_desktop_window {
+  default-height: 500;
+  default-width: 1000;
+  Label {
+    label: "Hello world!";
   }
 }
