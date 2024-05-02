@@ -7,5 +7,5 @@ LIBS=`pkg-config --libs $(PKGS)`
 ui: main.blp
 	blueprint-compiler compile main.blp --output kisa.ui
 
-main: main.cpp desktop.cpp
-	g++ main.cpp -o main $(CFLAGS) $(LIBS)
+main: src/*
+	g++ src/main.cpp -o main $(CFLAGS) $(LIBS)
