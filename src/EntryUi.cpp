@@ -3,6 +3,10 @@
 #include "desktop.cpp"
 #include "Common.cpp"
 
+/*
+ * This file contains only stuff in right panel (where the entry information is displayed).
+ */
+
 typedef struct {
 	deskentry::DesktopEntry de;
 	// TODO: replace categories_entry with a listview or smth.
@@ -34,15 +38,15 @@ void open_file_clicked(std::string path) {
 }
 
 void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
-	de->pe["Desktop Entry"]["Name"].strval 			= eui->filename_entry->get_text();
-	de->pe["Desktop Entry"]["Exec"].strval 			= eui->exec_entry->get_text();
-	de->pe["Desktop Entry"]["Comment"].strval 		= eui->comment_entry->get_text();
-	de->pe["Desktop Entry"]["Categories"].strval 		= eui->categories_entry->get_text();
-	de->pe["Desktop Entry"]["GenericName"].strval 		= eui->generic_name_entry->get_text();
-	de->pe["Desktop Entry"]["Path"].strval 			= eui->path_entry->get_text();
-	de->pe["Desktop Entry"]["Terminal"].strval 		= eui->terminal_check->get_active() ? "true" : "false";
-	de->pe["Desktop Entry"]["PrefersNonDefaultGPU"].strval 	= eui->dgpu_check->get_active() ? "true" : "false";
-	de->pe["Desktop Entry"]["SingleMainWindow"].strval 	= eui->single_main_window->get_active() ? "true" : "false";
+	de->pe["Desktop Entry"]["Name"] 			= eui->filename_entry->get_text();
+	de->pe["Desktop Entry"]["Exec"] 			= eui->exec_entry->get_text();
+	de->pe["Desktop Entry"]["Comment"] 		= eui->comment_entry->get_text();
+	de->pe["Desktop Entry"]["Categories"] 		= eui->categories_entry->get_text();
+	de->pe["Desktop Entry"]["GenericName"] 		= eui->generic_name_entry->get_text();
+	de->pe["Desktop Entry"]["Path"] 			= eui->path_entry->get_text();
+	de->pe["Desktop Entry"]["Terminal"] 		= eui->terminal_check->get_active() ? "true" : "false";
+	de->pe["Desktop Entry"]["PrefersNonDefaultGPU"] 	= eui->dgpu_check->get_active() ? "true" : "false";
+	de->pe["Desktop Entry"]["SingleMainWindow"] 	= eui->single_main_window->get_active() ? "true" : "false";
 }
 
 void save_button_clicked(EntryUi *eui) {

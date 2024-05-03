@@ -11,6 +11,11 @@
 #include <vector>
 #include <unistd.h>
 
+/*
+ * This is the library I use to parse and use desktop entry files.
+ * This file doesn't have any ui stuff and can be used seperately.
+ */
+
 namespace deskentry {
 
 // map of groups and their key-values.
@@ -43,7 +48,7 @@ typedef enum EntryType {
 typedef std::vector<std::string> CatList;
 
 typedef struct DesktopEntry {
-        ParsedEntry pe;
+        UnparsedEntry pe;
         enum EntryType type;
         bool isGicon, onMenu, onDesktop, onTaskbar, HiddenFilter, NoDisplayFilter,
              OnlyShowInFilter, TryExecFilter;
@@ -82,7 +87,8 @@ void print_pe(ParsedEntry pe) {
         }
 }
 
-std::optional<ParsedEntry> parse_entry(UnparsedEntry unde) {
+// Disabled due to performance reasons.
+/*std::optional<ParsedEntry> parse_entry(UnparsedEntry unde) {
         if (!unde.contains("Desktop Entry"))
                 return {};
         ParsedEntry pe;
@@ -125,7 +131,7 @@ std::optional<ParsedEntry> parse_entry(UnparsedEntry unde) {
                 }
         }
         return pe;
-}
+}*/
 
 std::optional<UnparsedEntry> read_file(std::string filepath) {
         std::string buffer;
@@ -150,12 +156,11 @@ std::optional<UnparsedEntry> read_file(std::string filepath) {
                 // Expected group header
                 if (current_line.starts_with("[")) {
                         // Syntax check
-                        int end_pos = current_line.find("]");
-                        std::string grp = current_line.substr(1, end_pos-1);
-                        if (grp.find("[") != std::string::npos)
+                        size_t end_pos = current_line.find("]");
+                        if (end_pos == std::string::npos)
                                 return {};
-                        current_group = grp;
-                        unde[current_group] = {}; // Could remove
+                        current_group = current_line.substr(1, end_pos-1);
+                        //unde[current_group] = {}; // Could remove
                 }
                 // Expected key-value
                 eq_pos = current_line.find("=");
@@ -188,26 +193,26 @@ enum EntryType parse_type(std::string typestr) {
         return EntryType::UndefinedType;
 }
 
-bool parse_desktop_filter(ParsedEntry pe, std::string xdg_env) {
+bool parse_desktop_filter(UnparsedEntry pe, std::string xdg_env) {
         bool res = false;
-        if (pe["Desktop Entry"]["OnlyShowIn"].strval != "")
-                res = pe["Desktop Entry"]["OnlyShowIn"].strval.find(xdg_env) != std::string::npos;
-        if (pe["Desktop Entry"]["NotShowIn"].strval != "")
-                res = pe["Desktop Entry"]["NotShowIn"].strval.find(xdg_env) == std::string::npos;
+        if (pe["Desktop Entry"]["OnlyShowIn"] != "")
+                res = pe["Desktop Entry"]["OnlyShowIn"].find(xdg_env) != std::string::npos;
+        if (pe["Desktop Entry"]["NotShowIn"] != "")
+                res = pe["Desktop Entry"]["NotShowIn"].find(xdg_env) == std::string::npos;
         return res;
 }
 
 // FIXME: make this compatible with spec.
-bool try_exec(ParsedEntry pe) {
-        if (pe["Desktop Entry"]["TryExec"].strval.empty())
+bool try_exec(UnparsedEntry pe) {
+        if (pe["Desktop Entry"]["TryExec"].empty())
                 return true;
-        return access(pe["Desktop Entry"]["TryExec"].strval.c_str(), X_OK);
+        return access(pe["Desktop Entry"]["TryExec"].c_str(), X_OK);
 }
 
-CatList parse_categories(ParsedEntry pe) {
+CatList parse_categories(UnparsedEntry pe) {
         CatList res;
-        if (pe["Desktop Entry"]["Categories"].isArray) {
-                std::string it = pe["Desktop Entry"]["Categories"].strval;
+        if (pe["Desktop Entry"]["Categories"].find(";") != std::string::npos) {
+                std::string it = pe["Desktop Entry"]["Categories"];
                 size_t pos = it.find(";");
                 while (pos != std::string::npos) {
                         res.push_back(it.substr(0, pos));
@@ -217,30 +222,29 @@ CatList parse_categories(ParsedEntry pe) {
                 // Add last element if array doesn't end with a semicolon
                 if (!it.empty())
                         res.push_back(it);
-        } else if (!pe["Desktop Entry"]["Categories"].strval.empty()){
-                res.push_back(pe["Desktop Entry"]["Categories"].strval);
+        } else if (!pe["Desktop Entry"]["Categories"].empty()){
+                res.push_back(pe["Desktop Entry"]["Categories"]);
         }
         return res;
 }
 
 std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env) {
         if (auto unde = read_file(filepath)){
-                auto oppe = parse_entry(unde.value());
-                if(!oppe.has_value())
+                if(!unde.has_value())
                         return {};
-                ParsedEntry pe = oppe.value();
-                EntryType et = parse_type(pe["Desktop Entry"]["Type"].strval);
+                UnparsedEntry upe = unde.value();
+                EntryType et = parse_type(upe["Desktop Entry"]["Type"]);
                 // See specification: table 2. Standard Keys
                 if (et == EntryType::UndefinedType)
                         return {};
                 DesktopEntry de = (DesktopEntry) {
-                        .pe = pe,
+                        .pe = upe,
                         .type = et,
-                        .HiddenFilter = pe["Desktop Entry"]["Hidden"].strval == "true",
-                        .NoDisplayFilter = pe["Desktop Entry"]["NoDisplay"].strval == "true",
-                        .OnlyShowInFilter = parse_desktop_filter(pe, xdg_env),
-                        .TryExecFilter = try_exec(pe),
-                        .Categories = parse_categories(pe),
+                        .HiddenFilter = upe["Desktop Entry"]["Hidden"] == "true",
+                        .NoDisplayFilter = upe["Desktop Entry"]["NoDisplay"] == "true",
+                        .OnlyShowInFilter = parse_desktop_filter(upe, xdg_env),
+                        .TryExecFilter = try_exec(upe),
+                        .Categories = parse_categories(upe),
                         .path = filepath,
                 };
                 
@@ -250,15 +254,15 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
         }
 }
 
-void write_to_file(ParsedEntry pe, std::string out_path) {
+void write_to_file(UnparsedEntry pe, std::string out_path) {
         std::string output_file = "#!/usr/bin/env xdg-open\n";
         for (auto const& [group, pg] : pe)
         {
                 output_file += "["+group+"]\n";
                 for (auto const& [pkey, pval] : pg) {
-                        if (pval.strval.empty())
+                        if (pval.empty())
                                 continue;
-                        output_file += pkey+"="+pval.strval+"\n";
+                        output_file += pkey+"="+pval+"\n";
                 }
                 output_file += "\n";
         }

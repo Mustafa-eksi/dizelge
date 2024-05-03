@@ -8,6 +8,8 @@
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <mutex>
+#include <thread>
 #include <tuple>
 #include <unistd.h>
 #include <unordered_map>
@@ -19,19 +21,29 @@
 #include "CategoryList.cpp"
 #include "Common.cpp"
 #include "EntryUi.cpp"
+#include "NewShortcut.cpp"
+#include "sigc++/functors/ptr_fun.h"
+
+const std::string EXECUTABLE_NAME = "dizelge";
+
+/*
+ * This file contains some ui stuff and general stuff that doesn't fit to other files.
+ */
 
 struct KisayolApp {
 	Glib::RefPtr<Gtk::Application> app;
 	Glib::RefPtr<Gtk::Builder> builder;
 	
 	Gtk::Window *main_window, *entry_window, *new_window;
-	Gtk::Button *ab, *add_new_button;
+
+	// TODO: move these to somewhere.
+	Gtk::Button *add_new_button;
 	Gtk::Entry *etxt;
 	Gtk::DropDown *folder_dd;
 	
+	std::mutex list_mutex;
 	EntryList list;
 	CategoryView catview;
-	std::string old_lw;
 	
 	ListUi lui;
 	EntryUi eui;
@@ -44,20 +56,13 @@ struct KisayolApp {
 // TODO: get rid of global variables
 struct KisayolApp kapp = { 0 };
 
-
-
-static void add_button_clicked() {
-	if (kapp.etxt->get_text() == "")
-		return;
-	kapp.lui.sl->append(kapp.etxt->get_text());
-	kapp.etxt->set_text("");
-}
+using namespace std::placeholders; // This is to avoid writing "std::placeholders::_1" which makes code harder to read.
 
 void search_entry_changed(void) {
 	std::string filter_text = kapp.etxt->get_text();
 	std::map<std::string, bool> ce;
 	for (size_t i = 0; i < kapp.list.size(); i++) {
-		if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"].strval)) {
+		if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"])) {
 			for (size_t j = 0; j < kapp.list[i].Categories.size(); j++) {
 				ce[kapp.list[i].Categories[j]] = true;
 			}
@@ -69,8 +74,24 @@ void search_entry_changed(void) {
 	}
 	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
 	kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
-	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, std::placeholders::_1, !filter_text.empty()));
+	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, _1, !filter_text.empty()));
 	kapp.lui.listem->set_model(kapp.lui.ns);
+}
+
+bool scan_file(KisayolApp *kapp, std::string path) {
+	auto pde = deskentry::parse_file(path, kapp->XDG_ENV);
+	if (!pde.has_value())
+		return false;
+	auto pe = pde.value();
+	if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
+		kapp->list_mutex.lock();
+		for (size_t i = 0; i < pe.Categories.size(); i++) {
+			kapp->catview.catlist[pe.Categories[i]][pe.pe["Desktop Entry"]["Name"]] = kapp->list.size();
+		}
+		kapp->list.push_back(pe);
+		kapp->list_mutex.unlock();
+	}
+	return true;
 }
 
 bool scan_folder(std::string folder_path) {
@@ -83,27 +104,21 @@ bool scan_folder(std::string folder_path) {
 		//printf("Folder %s doesn't exist\n", folder_path.c_str());
 		return res;
 	}
+	std::vector<std::thread> threads;
 	for (const auto & entry : std::filesystem::directory_iterator(folder_path)){
 		try {
 			if (entry.is_directory()) {
-				scan_folder(entry.path());
+				//scan_folder(entry.path());
 				continue;
 			}
-			auto pde = deskentry::parse_file(entry.path(), kapp.XDG_ENV);
-			if(pde.has_value()) {
-				auto pe = pde.value();
-				if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
-					for (size_t i = 0; i < pe.Categories.size(); i++) {
-						kapp.catview.catlist[pe.Categories[i]][pe.pe["Desktop Entry"]["Name"].strval] = kapp.list.size();
-					}
-					res = true;
-					kapp.list.push_back(pe);
-				}
-			}
+			threads.push_back(std::thread(scan_file, &kapp, entry.path()));
 		} catch (std::exception& e) {
 			printf("!!ERROR!! %s: %s\n", entry.path().c_str(), e.what());
 			return false;
 		}
+	}
+	for (auto& t : threads) {
+		t.join();
 	}
 	return res;
 }
@@ -154,23 +169,27 @@ void folder_dd_select() {
 	}
 }
 
-void new_ui() {
-	
+bool new_window_close() {
+	kapp.new_window->unset_application();
+	return false;
 }
 
 void add_new_button_clicked(void) {
 	kapp.new_window->show();
+	kapp.new_window->set_application(kapp.app);
+	kapp.new_window->signal_close_request().connect(&new_window_close, false);
 	new_ui();
 }
 
 void catlist_button_clicked(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string list_ind, std::string appname) {
 	if (!list_item->get_selected())
 		return;
-	kapp.eui.de = kapp.list[kapp.catview.catlist[list_ind][appname]];
-	if (kapp.catview.models->contains(kapp.old_lw) && kapp.old_lw != list_ind) {
-		kapp.catview.models->at(kapp.old_lw)->set_selected(-1);
+	if (kapp.catview.models->contains(kapp.catview.previous_cat) && kapp.catview.previous_cat != list_ind) {
+		kapp.catview.models->at(kapp.catview.previous_cat)->set_selected(-1);
 	}
-	kapp.old_lw = list_ind;
+	kapp.catview.previous_cat = list_ind;
+
+	kapp.eui.de = kapp.list[kapp.catview.catlist[list_ind][appname]];
 	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 }
 
@@ -198,11 +217,11 @@ void init_ui() {
 	kapp.catview.models = std::make_shared<ModelList>(ModelList());
 	kapp.catview.factories = std::make_shared<FactoryList>(FactoryList());
 
-	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, std::placeholders::_1, false));
-	kapp.lui.lif->signal_bind().connect(std::bind(lui_bind, std::placeholders::_1,
-		kapp.catview,
-		kapp.list, &catlist_button_clicked));
-	kapp.lui.lif->signal_unbind().connect(std::bind(lui_unbind, std::placeholders::_1, kapp.catview.category_views));
+	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, _1, false));
+	kapp.lui.lif->signal_bind().connect(std::bind(lui_bind, _1,
+		&kapp.catview,
+		&kapp.list, &catlist_button_clicked));
+	kapp.lui.lif->signal_unbind().connect(std::bind(lui_unbind, _1, kapp.catview.category_views));
 	kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(lui_teardown));
 
 	kapp.lui.listem = kapp.builder->get_widget<Gtk::ListView>("listem");
@@ -224,14 +243,10 @@ void init_ui() {
 	kapp.folder_dd->connect_property_changed("selected", sigc::ptr_fun(folder_dd_select));
 	
 	kapp.new_window = kapp.builder->get_widget<Gtk::Window>("new_desktop_window");
-	kapp.new_window->set_application(kapp.app);
 	kapp.new_window->set_hide_on_close(true);
 
 	kapp.add_new_button = kapp.builder->get_widget<Gtk::Button>("add_new_button");
 	kapp.add_new_button->signal_clicked().connect(&add_new_button_clicked);
-
-	if (kapp.ab)
-		kapp.ab->signal_clicked().connect(sigc::ptr_fun(add_button_clicked));
 
 	kapp.main_window->present();
 }
@@ -240,11 +255,11 @@ int main(int argc, char* argv[])
 {
 	// Quick hack for accessing .glade file from anywhere
 	std::string first_arg = argv[0];
-	std::string abs_path = first_arg.substr(0, first_arg.length()-4);
+	std::string abs_path = first_arg.substr(0, first_arg.length()-EXECUTABLE_NAME.length());
 	
 	kapp.app = Gtk::Application::create("org.mustafa.dizelge");
-	
-	kapp.builder = Gtk::Builder::create_from_file(abs_path + "kisa.ui");
+	// FIXME: this assumes dizelge.ui and executable are in the same directory.
+	kapp.builder = Gtk::Builder::create_from_file(abs_path + "dizelge.ui");
 	if(!kapp.builder)
 		return 1;
 

@@ -2,6 +2,10 @@
 #include <gtkmm.h>
 #include "desktop.cpp"
 
+/*
+ * Common things that multiple files use.
+ */
+
 typedef std::map<std::string, std::map<std::string, size_t>> CategoryEntries;
 
 typedef std::map<std::string, Gtk::ListView*> ListviewList;
@@ -10,10 +14,12 @@ typedef std::map<std::string, Glib::RefPtr<Gtk::SignalListItemFactory>> FactoryL
 
 typedef std::vector<deskentry::DesktopEntry> EntryList;
 
+// Only a helper
 std::string de_val(deskentry::DesktopEntry de, std::string key) {
-        return de.pe["Desktop Entry"][key].strval;
+        return de.pe["Desktop Entry"][key];
 }
 
+// TODO: Replace this with fuzzy search.
 bool insensitive_search(std::string filter_text, std::string a) {
 	std::transform(a.begin(), a.end(), a.begin(),
     			[](unsigned char c){ return std::tolower(c); });
@@ -21,6 +27,7 @@ bool insensitive_search(std::string filter_text, std::string a) {
 		[](unsigned char c){ return std::tolower(c); });
 	return a.starts_with(filter_text);
 }
+
 void set_icon(Gtk::Image* img, std::string icon_str) {
 	if (icon_str == "")
 		img->set_from_icon_name("applications-other");
