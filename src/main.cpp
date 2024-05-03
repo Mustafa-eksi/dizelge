@@ -221,7 +221,7 @@ void init_ui() {
 	kapp.lui.lif->signal_bind().connect(std::bind(lui_bind, _1,
 		&kapp.catview,
 		&kapp.list, &catlist_button_clicked));
-	kapp.lui.lif->signal_unbind().connect(std::bind(lui_unbind, _1, kapp.catview.category_views));
+	kapp.lui.lif->signal_unbind().connect(std::bind(lui_unbind, _1, kapp.catview.category_views, &kapp.catview));
 	kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(lui_teardown));
 
 	kapp.lui.listem = kapp.builder->get_widget<Gtk::ListView>("listem");

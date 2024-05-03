@@ -39,7 +39,7 @@ static void cat_teardown(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 
 // This is called for each of the items in each of the expanders.
 static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string cat_name,
-                     EntryList *list, CategoryEntries catlist,
+                     EntryList *list, CategoryEntries *catlist,
                      void (*catlist_button_clicked)(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string list_ind, std::string appname)) {
 	// Get the name of the item
 	std::string strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
@@ -50,7 +50,7 @@ static void cat_bind(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string c
 	lb->set_label(strobj);
 	
 	// Set the icon
-	set_icon(icon, de_val((*list)[catlist[cat_name][strobj]], "Icon"));
+	set_icon(icon, de_val((*list)[(*catlist)[cat_name][strobj]], "Icon"));
 	icon->set_pixel_size(24);
 
 	auto sp_fn = std::bind(catlist_button_clicked, list_item, cat_name, strobj);

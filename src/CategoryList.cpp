@@ -5,6 +5,7 @@
 
 #include "ApplicatonList.cpp"
 #include "Common.cpp"
+#include "gtkmm/singleselection.h"
 
 /*
  * This file contains only signals of the category list ListView.
@@ -49,27 +50,40 @@ static void lui_bind(const Glib::RefPtr<Gtk::ListItem>& list_item,
 		}*/
 		gsl->append(name);
 	}
-        catview->models->insert(std::make_pair(strobj, Gtk::SingleSelection::create()));
-	catview->models->at(strobj)->set_autoselect(false);
-	catview->models->at(strobj)->set_model(gsl);
-	catview->factories->insert(std::make_pair(strobj, Gtk::SignalListItemFactory::create()));
-	catview->factories->at(strobj)->signal_setup().connect(sigc::ptr_fun(cat_setup));
-	catview->factories->at(strobj)->signal_bind().connect(std::bind(cat_bind, std::placeholders::_1, strobj, main_list, catview->catlist, catlist_button_clicked));
-	catview->factories->at(strobj)->signal_unbind().connect(std::bind(cat_unbind, std::placeholders::_1, strobj));
-	catview->factories->at(strobj)->signal_teardown().connect(sigc::ptr_fun(cat_teardown));
-	catview->category_views->insert(std::make_pair(strobj, new Gtk::ListView()));
-	catview->category_views->at(strobj)->set_model(catview->models->at(strobj));
-	catview->category_views->at(strobj)->set_factory(catview->factories->at(strobj));
-	catview->category_views->at(strobj)->set_single_click_activate(false);
+
+	(*catview->models.get())[strobj] = Gtk::SingleSelection::create();
+	//catview->models->insert(std::make_pair(strobj, Gtk::SingleSelection::create()));
+	(*catview->models.get())[strobj]->set_autoselect(false);
+	(*catview->models.get())[strobj]->set_model(gsl);
+
+	//if (catview->factories->contains(strobj))
+		(*catview->factories.get())[strobj] = Gtk::SignalListItemFactory::create();
+	//else
+	//	catview->factories->insert(std::make_pair(strobj, Gtk::SignalListItemFactory::create()));
+	(*catview->factories.get())[strobj]->signal_setup().connect(sigc::ptr_fun(cat_setup));
+	(*catview->factories.get())[strobj]->signal_bind().connect(std::bind(cat_bind, std::placeholders::_1, strobj, main_list, &catview->catlist, catlist_button_clicked));
+	(*catview->factories.get())[strobj]->signal_unbind().connect(std::bind(cat_unbind, std::placeholders::_1, strobj));
+	(*catview->factories.get())[strobj]->signal_teardown().connect(sigc::ptr_fun(cat_teardown));
+		
+	(*catview->category_views.get())[strobj] = new Gtk::ListView();
+	//else
+	//	catview->category_views->insert(std::make_pair(strobj, new Gtk::ListView()));
+	if (!catview->category_views->contains(strobj) || !catview->models->contains(strobj)) {
+		printf("cat: %s\n", strobj.c_str());
+		return;
+	}
+	(*catview->category_views.get())[strobj]->set_model(catview->models->at(strobj));
+	(*catview->category_views.get())[strobj]->set_factory(catview->factories->at(strobj));
+	(*catview->category_views.get())[strobj]->set_single_click_activate(false);
 
 	lb->set_child(*dynamic_cast<Gtk::Widget*>(catview->category_views->at(strobj)));
 	//set_from_desktop_entry(&kapp.eui, kapp.eui.de);
 }
 
-void lui_unbind(const Glib::RefPtr<Gtk::ListItem> &li, std::shared_ptr<ListviewList> lists) {
-	auto lb = dynamic_cast<Gtk::Expander *>(li.get()->get_child());
-	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (li->gobj())));
-	lb->unset_child();
-	delete lb;
-	delete lists->at(strobj);
+void lui_unbind(const Glib::RefPtr<Gtk::ListItem> &list_item, std::shared_ptr<ListviewList> lists, CategoryView *catview) {
+	auto lb = dynamic_cast<Gtk::Expander *>(list_item.get()->get_child());
+	auto strobj = lb->get_label();
+	lb->set_label("");
+        lb->unset_child();
+	delete catview->category_views->at(strobj);
 }
