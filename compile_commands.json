@@ -39,12 +39,14 @@
       "-pthread",
       "-I/usr/include/libpng16",
       "-I/usr/include/pixman-1",
+      "-O2",
+      "-fno-omit-frame-pointer",
       "-o",
-      "main",
+      "dizelge",
       "src/main.cpp"
     ],
     "directory": "/home/mustafa/Programming/kisayol-duzenleyici/obsolete",
     "file": "/home/mustafa/Programming/kisayol-duzenleyici/obsolete/src/main.cpp",
-    "output": "/home/mustafa/Programming/kisayol-duzenleyici/obsolete/main"
+    "output": "/home/mustafa/Programming/kisayol-duzenleyici/obsolete/dizelge"
   }
 ]

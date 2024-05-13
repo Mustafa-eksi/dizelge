@@ -2,15 +2,12 @@
 #include <cstddef>
 #include <cstdlib>
 #include <exception>
-#include <iostream>
+#include <gtkmm-4.0/gtkmm/noselection.h>
 #include <gtkmm.h>
-#include <format>
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <thread>
-#include <tuple>
 #include <unistd.h>
 #include <unordered_map>
 #include <vector>
@@ -22,6 +19,8 @@
 #include "Common.cpp"
 #include "EntryUi.cpp"
 #include "NewShortcut.cpp"
+#include "gtkmm/singleselection.h"
+#include "gtkmm/stringobject.h"
 #include "sigc++/functors/ptr_fun.h"
 
 const std::string EXECUTABLE_NAME = "dizelge";
@@ -29,6 +28,16 @@ const std::string EXECUTABLE_NAME = "dizelge";
 /*
  * This file contains some ui stuff and general stuff that doesn't fit to other files.
  */
+
+typedef struct {
+	Gtk::ListView *listem;
+	std::vector<Glib::ustring> strings;
+	Glib::RefPtr<Gtk::StringList> sl;
+	Glib::RefPtr<Gtk::SignalListItemFactory> lif;
+	Glib::RefPtr<Gtk::NoSelection> ns;
+	Glib::RefPtr<Gtk::SingleSelection> ss;
+	sigc::connection setup, bind, unbind, teardown;
+} ListUi;
 
 struct KisayolApp {
 	Glib::RefPtr<Gtk::Application> app;
@@ -44,7 +53,9 @@ struct KisayolApp {
 	std::mutex list_mutex;
 	EntryList list;
 	CategoryView catview;
-	
+	SignalMap smap;
+	ListMap lmap;
+
 	ListUi lui;
 	EntryUi eui;
 	
@@ -58,25 +69,8 @@ struct KisayolApp kapp = { 0 };
 
 using namespace std::placeholders; // This is to avoid writing "std::placeholders::_1" which makes code harder to read.
 
-void search_entry_changed(void) {
-	std::string filter_text = kapp.etxt->get_text();
-	std::map<std::string, bool> ce;
-	for (size_t i = 0; i < kapp.list.size(); i++) {
-		if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"])) {
-			for (size_t j = 0; j < kapp.list[i].Categories.size(); j++) {
-				ce[kapp.list[i].Categories[j]] = true;
-			}
-		}
-	}
-	kapp.lui.strings.clear();
-	for (auto const& [name, _b] : ce) {
-		kapp.lui.strings.push_back(name);
-	}
-	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
-	kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
-	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, _1, !filter_text.empty()));
-	kapp.lui.listem->set_model(kapp.lui.ns);
-}
+// TODO: Put these into settings.
+const bool is_catview = true;
 
 bool scan_file(KisayolApp *kapp, std::string path) {
 	auto pde = deskentry::parse_file(path, kapp->XDG_ENV);
@@ -95,19 +89,20 @@ bool scan_file(KisayolApp *kapp, std::string path) {
 }
 
 bool scan_folder(std::string folder_path) {
-	size_t tildepos = folder_path.find("~");
 	bool res = false;
-	if (tildepos != std::string::npos) {
+	// Replace tildes (~) with /home/<username>
+	size_t tildepos = folder_path.find("~");
+	if (tildepos != std::string::npos) // Rep
 		folder_path = folder_path.replace(tildepos, 1, std::getenv("HOME"));
-	}
-	if (access(folder_path.c_str(), F_OK) != 0) {
-		//printf("Folder %s doesn't exist\n", folder_path.c_str());
+
+	if (access(folder_path.c_str(), F_OK) != 0) // Folder doesn't exist
 		return res;
-	}
+
 	std::vector<std::thread> threads;
 	for (const auto & entry : std::filesystem::directory_iterator(folder_path)){
 		try {
 			if (entry.is_directory()) {
+				// recursive scan:
 				//scan_folder(entry.path());
 				continue;
 			}
@@ -128,14 +123,14 @@ void scan_combined() {
 	std::string datadirs = std::getenv("XDG_DATA_DIRS");
 	if (!datadirs.empty()) {
 		std::string it = datadirs;
-                size_t pos = it.find(":");
-                while (pos != std::string::npos) {
-                        if (scan_folder(it.substr(0, pos)+"/applications/")) {
+		size_t pos = it.find(":");
+		while (pos != std::string::npos) {
+			if (scan_folder(it.substr(0, pos)+"/applications/")) {
 				kapp.scanned_folders.push_back(it.substr(0, pos)+"/applications/");
 			}
-                        it = it.substr(pos+1);
-                        pos = it.find(":");
-                }
+			it = it.substr(pos+1);
+			pos = it.find(":");
+		}
 		if (scan_folder(it+"/applications/")) {
 			kapp.scanned_folders.push_back(it+"/applications/");
 		}
@@ -181,16 +176,132 @@ void add_new_button_clicked(void) {
 	new_ui();
 }
 
-void catlist_button_clicked(const Glib::RefPtr<Gtk::ListItem>& list_item, std::string list_ind, std::string appname) {
-	if (!list_item->get_selected())
-		return;
-	if (kapp.catview.models->contains(kapp.catview.previous_cat) && kapp.catview.previous_cat != list_ind) {
-		kapp.catview.models->at(kapp.catview.previous_cat)->set_selected(-1);
+void list_selection_changed(guint p, guint p2, Glib::RefPtr<Gtk::SingleSelection> sm, bool is_category, bool is_mapped, std::string list_ind) {
+	auto selected_index = sm->get_selected();
+	if (selected_index == -1) return;
+	if (is_category) {
+		if (kapp.catview.models->contains(kapp.catview.previous_cat) && kapp.catview.previous_cat != list_ind) {
+			kapp.catview.models->at(kapp.catview.previous_cat)->set_selected(-1);
+		}
+		kapp.catview.previous_cat = list_ind;
 	}
-	kapp.catview.previous_cat = list_ind;
-
-	kapp.eui.de = kapp.list[kapp.catview.catlist[list_ind][appname]];
+	auto appname = dynamic_cast<Gtk::StringObject*>(sm->get_model()->get_object(selected_index).get())->get_string();
+	auto ind = is_category ? kapp.catview.catlist[list_ind][appname] : is_mapped ? kapp.lmap[appname] : sm->get_selected();
+	kapp.eui.de = kapp.list[ind];
 	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
+}
+
+void listview_signals(bool is_catview, bool is_mapped) {
+	if (kapp.lui.setup || kapp.lui.bind || kapp.lui.unbind || kapp.lui.teardown) {
+		kapp.lui.setup.disconnect();
+		kapp.lui.bind.disconnect();
+		kapp.lui.unbind.disconnect();
+		kapp.lui.teardown.disconnect();
+	}
+	if (is_catview) {
+		kapp.catview.category_views.reset();
+		kapp.catview.models.reset();
+		kapp.catview.factories.reset();
+		kapp.catview.category_views = std::make_shared<ListviewList>(ListviewList());
+		kapp.catview.models = std::make_shared<ModelList>(ModelList());
+		kapp.catview.factories = std::make_shared<FactoryList>(FactoryList());
+		kapp.lui.setup = kapp.lui.lif->signal_setup().connect(std::bind(categorylist_setup, _1, is_mapped));
+		kapp.lui.bind = kapp.lui.lif->signal_bind().connect(std::bind(categorylist_bind, _1,
+													  &kapp.catview, &kapp.list, &list_selection_changed));
+		kapp.lui.unbind = kapp.lui.lif->signal_unbind().connect(std::bind(categorylist_unbind, _1, kapp.catview.category_views, &kapp.catview));
+		kapp.lui.teardown = kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(categorylist_teardown));
+	} else {
+		kapp.lui.setup = kapp.lui.lif->signal_setup().connect(sigc::ptr_fun(applist_setup));
+		kapp.lui.bind = kapp.lui.lif->signal_bind().connect(std::bind(applist_bind, _1, &kapp.list, &kapp.lmap, is_mapped));
+		kapp.lui.unbind = kapp.lui.lif->signal_unbind().connect(std::bind(applist_unbind, _1));
+		kapp.lui.teardown = kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(applist_teardown));
+	}
+}
+
+void populate_stringlist(bool is_catview) {
+	kapp.lui.strings.clear();
+	if (is_catview) {
+		for (auto const& [group, apps] : kapp.catview.catlist) {
+			kapp.lui.strings.push_back(group);
+		}
+		std::sort(kapp.lui.strings.begin(), kapp.lui.strings.end());
+	} else {
+		for (auto app : kapp.list) {
+			kapp.lui.strings.push_back(app.pe["Desktop Entry"]["Name"]);
+		}
+	}
+}
+
+void deneme(guint p1, guint p2, Glib::RefPtr<Gtk::SingleSelection> ss) {
+	printf("%d %d -> %d\n", p1, p2, ss->get_selected());
+}
+
+void initialize_list() {
+	populate_stringlist(is_catview);
+	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings); // gtk_string_list_new ((const char * const *) array);
+	if (is_catview) {
+		kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
+	} else {
+		kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
+		//kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&deneme, kapp.lui.ss));
+		kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&list_selection_changed, kapp.lui.ss, is_catview, false, ""));
+		//void list_selection_changed(Gtk::SingleSelection *sm, bool is_category, bool is_mapped, std::string list_ind);
+	}
+
+	kapp.lui.lif = Gtk::SignalListItemFactory::create();
+
+	listview_signals(is_catview, false);
+
+	kapp.lui.listem = kapp.builder->get_widget<Gtk::ListView>("listem");
+	if (!kapp.lui.listem)
+		return;
+	if (is_catview)
+		kapp.lui.listem->set_model(kapp.lui.ns);
+	else
+		kapp.lui.listem->set_model(kapp.lui.ss);
+	kapp.lui.listem->set_factory(kapp.lui.lif);
+}
+
+void search_entry_changed(bool is_category) {
+	std::string filter_text = kapp.etxt->get_text();
+	if (filter_text.empty()) {
+		initialize_list();
+		return;
+	}
+	kapp.lui.sl.reset();
+	if (is_category) {
+		std::map<std::string, bool> ce;
+		for (size_t i = 0; i < kapp.list.size(); i++) {
+			if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"])) {
+				for (size_t j = 0; j < kapp.list[i].Categories.size(); j++) {
+					ce[kapp.list[i].Categories[j]] = true;
+				}
+			}
+		}
+		kapp.lui.strings.clear();
+		for (auto const& [name, _b] : ce) {
+			kapp.lui.strings.push_back(name);
+		}
+		kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
+		kapp.lui.ns.reset();
+		kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
+		kapp.lui.lif->signal_setup().connect(std::bind(categorylist_setup, _1, !filter_text.empty()));
+		kapp.lui.listem->set_model(kapp.lui.ns);
+	} else {
+		kapp.lui.strings.clear();
+		for (size_t i = 0; i < kapp.list.size(); i++) {
+			if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"])) {
+				kapp.lui.strings.push_back(kapp.list[i].pe["Desktop Entry"]["Name"]);
+				kapp.lmap[kapp.list[i].pe["Desktop Entry"]["Name"]] = i;
+			}
+		}
+		kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
+		kapp.lui.ss.reset();
+		kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
+		listview_signals(false, true);
+		kapp.lui.listem->set_model(kapp.lui.ss);
+		kapp.lui.ss->set_selected(-1);
+	}
 }
 
 void init_ui() {
@@ -201,34 +312,10 @@ void init_ui() {
 	entry_ui(&kapp.eui, kapp.builder);
 	
 	kapp.etxt = kapp.builder->get_widget<Gtk::Entry>("etxt");
-	kapp.etxt->signal_changed().connect(sigc::ptr_fun(search_entry_changed));
+	kapp.etxt->signal_changed().connect(std::bind(search_entry_changed, is_catview));
 
 	scan_combined();
-	for (auto const& [group, apps] : kapp.catview.catlist) {
-		kapp.lui.strings.push_back(group);
-	}
-	std::sort(kapp.lui.strings.begin(), kapp.lui.strings.end());
-	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings); // gtk_string_list_new ((const char * const *) array);
-	kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl); // gtk_no_selection_new (G_LIST_MODEL (sl));
-	
-	kapp.lui.lif = Gtk::SignalListItemFactory::create();
-
-	kapp.catview.category_views = std::make_shared<ListviewList>(ListviewList());
-	kapp.catview.models = std::make_shared<ModelList>(ModelList());
-	kapp.catview.factories = std::make_shared<FactoryList>(FactoryList());
-
-	kapp.lui.lif->signal_setup().connect(std::bind(lui_setup, _1, false));
-	kapp.lui.lif->signal_bind().connect(std::bind(lui_bind, _1,
-		&kapp.catview,
-		&kapp.list, &catlist_button_clicked));
-	kapp.lui.lif->signal_unbind().connect(std::bind(lui_unbind, _1, kapp.catview.category_views, &kapp.catview));
-	kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(lui_teardown));
-
-	kapp.lui.listem = kapp.builder->get_widget<Gtk::ListView>("listem");
-	if (kapp.lui.listem) {
-		kapp.lui.listem->set_model(kapp.lui.ns);
-		kapp.lui.listem->set_factory(kapp.lui.lif);
-	}
+	initialize_list();
 
 	kapp.folder_dd = kapp.builder->get_widget<Gtk::DropDown>("paths_to_scan");
 	auto ddsl = Gtk::StringList::create(kapp.scanned_folders);

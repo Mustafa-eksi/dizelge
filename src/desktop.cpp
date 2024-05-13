@@ -1,9 +1,7 @@
 #pragma once
 #include <cstdlib>
-#include <exception>
 #include <ios>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <fstream>
 #include <stdio.h>
@@ -150,11 +148,13 @@ std::optional<UnparsedEntry> read_file(std::string filepath) {
                 size_t end_of_line = buffer.find("\n", i);
 
                 std::string current_line = buffer.substr(i, end_of_line-i);
+                if (current_line.empty())
+                        continue;
                 // Shebang or comment
-                if (current_line.starts_with("#"))
+                if (current_line.at(0) == '#')
                         goto skip;
                 // Expected group header
-                if (current_line.starts_with("[")) {
+                if (current_line.at(0) == '[') {
                         // Syntax check
                         size_t end_pos = current_line.find("]");
                         if (end_pos == std::string::npos)
@@ -168,11 +168,15 @@ std::optional<UnparsedEntry> read_file(std::string filepath) {
                         if (current_group.empty())
                                 goto skip;
                         std::string key = current_line.substr(0, eq_pos);
-                        while (key.ends_with(" ")) {
+                        if (key.empty())
+                                continue;
+                        while (key.at(key.length()-1) == ' ') {
                                 key.pop_back();
                         }
                         std::string value = current_line.substr(eq_pos+1);
-                        while (value.starts_with(" ")) {
+                        if (value.empty())
+                                continue;
+                        while (value.at(0) == ' ') {
                                 value = value.substr(1);
                         }
                         unde[current_group][key] = value;

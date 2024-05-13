@@ -1,7 +1,7 @@
 .PHONY: all
 all: ui main
 PKGS=gtkmm-4.0
-CFLAGS=-Wall -ggdb -std=c++20 `pkg-config --cflags $(PKGS)` -O2 -fno-omit-frame-pointer
+CFLAGS=-Wall -ggdb -std=c++20 `pkg-config --cflags $(PKGS)` -O2 -fno-omit-frame-pointer # -fsanitize=address -fno-common
 LIBS=`pkg-config --libs $(PKGS)`
 
 ui: main.blp
