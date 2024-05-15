@@ -153,30 +153,32 @@ std::optional<UnparsedEntry> read_file(std::string filepath) {
                 // Shebang or comment
                 if (current_line.at(0) == '#')
                         goto skip;
+                //printf("%s: '%s'\n", filepath.c_str(), current_line.c_str());
                 // Expected group header
                 if (current_line.at(0) == '[') {
                         // Syntax check
                         size_t end_pos = current_line.find("]");
                         if (end_pos == std::string::npos)
                                 return {};
-                        current_group = current_line.substr(1, end_pos-1);
+                        if (end_pos-1 > 0)
+                                current_group = current_line.substr(1, end_pos-1);
                         //unde[current_group] = {}; // Could remove
                 }
                 // Expected key-value
                 eq_pos = current_line.find("=");
-                if (eq_pos != std::string::npos) {
+                if (eq_pos != std::string::npos && eq_pos != current_line.length()-1) {
                         if (current_group.empty())
                                 goto skip;
                         std::string key = current_line.substr(0, eq_pos);
                         if (key.empty())
                                 continue;
-                        while (key.at(key.length()-1) == ' ') {
+                        while (key.length() > 1 && key.at(key.length()-1) == ' ') {
                                 key.pop_back();
                         }
                         std::string value = current_line.substr(eq_pos+1);
                         if (value.empty())
                                 continue;
-                        while (value.at(0) == ' ') {
+                        while (value.length() > 1 && value.at(0) == ' ') {
                                 value = value.substr(1);
                         }
                         unde[current_group][key] = value;
@@ -185,8 +187,6 @@ skip:
                 if (end_of_line < buffer.size())
                         i = end_of_line;
         }
-        //print_unde(unde);
-
         return unde;
 }
 

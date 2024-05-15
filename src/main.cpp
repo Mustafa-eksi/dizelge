@@ -89,23 +89,24 @@ bool scan_file(KisayolApp *kapp, std::string path) {
 }
 
 bool scan_folder(std::string folder_path) {
-	bool res = false;
 	// Replace tildes (~) with /home/<username>
 	size_t tildepos = folder_path.find("~");
 	if (tildepos != std::string::npos) // Rep
 		folder_path = folder_path.replace(tildepos, 1, std::getenv("HOME"));
 
 	if (access(folder_path.c_str(), F_OK) != 0) // Folder doesn't exist
-		return res;
+		return false;
 
 	std::vector<std::thread> threads;
 	for (const auto & entry : std::filesystem::directory_iterator(folder_path)){
 		try {
+			if (!entry.is_regular_file() && !entry.is_directory()) continue;
 			if (entry.is_directory()) {
 				// recursive scan:
 				//scan_folder(entry.path());
 				continue;
 			}
+			//scan_file(&kapp, entry.path());
 			threads.push_back(std::thread(scan_file, &kapp, entry.path()));
 		} catch (std::exception& e) {
 			printf("!!ERROR!! %s: %s\n", entry.path().c_str(), e.what());
@@ -115,12 +116,13 @@ bool scan_folder(std::string folder_path) {
 	for (auto& t : threads) {
 		t.join();
 	}
-	return res;
+	return true;
 }
 
 void scan_combined() {
 	kapp.scanned_folders.push_back("Combined");
 	std::string datadirs = std::getenv("XDG_DATA_DIRS");
+	printf("datadirs: %s\n", datadirs.c_str());
 	if (!datadirs.empty()) {
 		std::string it = datadirs;
 		size_t pos = it.find(":");
@@ -243,9 +245,7 @@ void initialize_list() {
 		kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
 	} else {
 		kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
-		//kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&deneme, kapp.lui.ss));
 		kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&list_selection_changed, kapp.lui.ss, is_catview, false, ""));
-		//void list_selection_changed(Gtk::SingleSelection *sm, bool is_category, bool is_mapped, std::string list_ind);
 	}
 
 	kapp.lui.lif = Gtk::SignalListItemFactory::create();
