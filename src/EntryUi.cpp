@@ -32,9 +32,9 @@ static void dd_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	gtk_label_set_text (GTK_LABEL(lb), gtk_string_object_get_string (strobj));
 }
 
-void open_file_clicked(std::string path) {
-        if (!path.empty())
-	        system(("xdg-open "+path).c_str());
+void open_file_clicked(std::string *path) {
+    if (!path->empty())
+		system(("xdg-open "+*path).c_str());
 }
 
 void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
@@ -98,5 +98,5 @@ void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder) {
 	eui->icon 		= builder->get_widget<Gtk::Image>("app_icon");
 
 	eui->save_button->signal_clicked().connect(std::bind(save_button_clicked, eui));
-	eui->open_file_button->signal_clicked().connect(std::bind(open_file_clicked, eui->de.path));
+	eui->open_file_button->signal_clicked().connect(sigc::bind(&open_file_clicked, &eui->de.path));
 }

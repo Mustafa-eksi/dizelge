@@ -70,7 +70,7 @@ struct KisayolApp kapp = { 0 };
 using namespace std::placeholders; // This is to avoid writing "std::placeholders::_1" which makes code harder to read.
 
 // TODO: Put these into settings.
-const bool is_catview = true;
+const bool is_catview = false;
 
 bool scan_file(KisayolApp *kapp, std::string path) {
 	auto pde = deskentry::parse_file(path, kapp->XDG_ENV);

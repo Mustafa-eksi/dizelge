@@ -7,9 +7,11 @@ Window main_window {
     orientation: horizontal;
     spacing: 10;
     margin-start: 10;
+    margin-top: 10;
+    margin-end: 10;
+    margin-bottom: 10;
     Box sidepanel {
       orientation: vertical;
-      margin-top: 10;
       hexpand: true;
 
       Box {
@@ -43,11 +45,12 @@ Window main_window {
         }
       }
     }
-    Box {
-    orientation: vertical;
+Box {
+  orientation: vertical;
+  Notebook {
+//    orientation: vertical;
     halign: fill;
     hexpand: true;
-
     Box MoreImportant {
       hexpand: true;
       margin-start: 12;
@@ -66,20 +69,8 @@ Window main_window {
         valign: start;
         margin-start: 12;
         margin-end: 16;
-        Box {
-          hexpand: true;
-          orientation: horizontal;
-          margin-top: 12;
-          Label {
-            margin-end: 12;
-            label: "Type:";
-          }
-
-          DropDown type_drop {
-          }
-        }
-
-        Box {
+        spacing: 12;
+        Box { // Name
           hexpand: true;
           orientation: horizontal;
           margin-top: 12;
@@ -94,7 +85,25 @@ Window main_window {
             hexpand: true;
           }
         }
+        Box { // Exec
+          // margin-top: 12;
+          orientation: horizontal;
+
+          Label {
+            margin-end: 12;
+            label: "Exec:";
+          }
+
+          Entry exec_entry {
+            placeholder-text: "exec";
+            hexpand: true;
+          }
+        }
       }
+    }
+    [tab]
+    Label {
+      label: "Basic";
     }
     Box NotSoImportant {
       orientation: vertical;
@@ -103,22 +112,35 @@ Window main_window {
       margin-end: 16;
       margin-bottom: 16;
       hexpand: true;
-      Box {
-        margin-top: 12;
-        orientation: horizontal;
+      spacing: 12;
+       Box {
+          hexpand: true;
+          orientation: horizontal;
+          margin-top: 12;
+          Label {
+            margin-end: 12;
+            label: "Type:";
+          }
+          DropDown type_drop {
+            margin-top: 12;
+          }
 
+        }
+
+      Box { // Generic Name
+        orientation: horizontal;
         Label {
           margin-end: 12;
           label: "Generic Name:";
         }
 
         Entry generic_name_entry {
-          placeholder-text: "Generic Name";
+          // placeholder-text: "Generic Name";
           hexpand: true;
         }
       }
-      Box {
-        margin-top: 12;
+      Box { // Comment
+        // margin-top: 12;
         orientation: horizontal;
 
         Label {
@@ -127,12 +149,12 @@ Window main_window {
         }
 
         Entry comment_entry {
-          placeholder-text: "Comment";
+          // placeholder-text: "Comment";
           hexpand: true;
         }
       }
-      Box {
-        margin-top: 12;
+      Box { // Category
+        //margin-top: 12;
         orientation: horizontal;
 
         Label {
@@ -141,26 +163,12 @@ Window main_window {
         }
 
         Entry categories_entry {
-          placeholder-text: "Category";
+          //placeholder-text: "Category";
           hexpand: true;
         }
       }
-      Box {
-        margin-top: 12;
-        orientation: horizontal;
-
-        Label {
-          margin-end: 12;
-          label: "Exec:";
-        }
-
-        Entry exec_entry {
-          placeholder-text: "exec";
-          hexpand: true;
-        }
-      }
-      Box {
-        margin-top: 12;
+      Box { // Path
+        //margin-top: 12;
         orientation: horizontal;
 
         Label {
@@ -169,7 +177,7 @@ Window main_window {
         }
 
         Entry path_entry {
-          placeholder-text: "Path";
+          // placeholder-text: "Path";
           hexpand: true;
         }
       }
@@ -186,25 +194,32 @@ Window main_window {
         has-tooltip: true;
         tooltip-text: "If true, the application has a single main window, and does not support having an additional one opened.";
       }
-      Box bottombar {
-        valign: end;
-        vexpand: true;
-        halign: end;
-        Button open_file_button {
-          margin-end: 8;
-          icon-name: "search-folder-symbolic";
-          label: "Open file";
-        }
-        Button save_button {
-          styles [
-            "suggested-action",
-          ]
-          icon-name: "checkmark";
-          label: "Save";
-        }
-      }
+    }
+    [tab]
+    Label {
+      label: "Advanced";
     }
   }
+  Box bottombar {
+    valign: center;
+    vexpand: true;
+    halign: end;
+    margin-end: 12;
+    
+    Button open_file_button {
+      margin-end: 8;
+      icon-name: "search-folder-symbolic";
+      label: "Open file";
+    }
+    Button save_button {
+      styles [
+        "suggested-action",
+      ]
+      icon-name: "checkmark";
+      label: "Save";
+    }
+  }
+}
   }
 }
 
