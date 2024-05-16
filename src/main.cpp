@@ -77,6 +77,8 @@ bool scan_file(KisayolApp *kapp, std::string path) {
 	if (!pde.has_value())
 		return false;
 	auto pe = pde.value();
+	//if (pe.type != deskentry::EntryType::Application)
+	//	printf("-> %s\n", path.c_str());
 	if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
 		kapp->list_mutex.lock();
 		for (size_t i = 0; i < pe.Categories.size(); i++) {
@@ -122,7 +124,6 @@ bool scan_folder(std::string folder_path) {
 void scan_combined() {
 	kapp.scanned_folders.push_back("Combined");
 	std::string datadirs = std::getenv("XDG_DATA_DIRS");
-	printf("datadirs: %s\n", datadirs.c_str());
 	if (!datadirs.empty()) {
 		std::string it = datadirs;
 		size_t pos = it.find(":");
@@ -141,41 +142,6 @@ void scan_combined() {
 	kapp.scanned_folders.push_back("~/.local/share/applications/");
 	scan_folder("~/Desktop/");
 	kapp.scanned_folders.push_back("~/Desktop/");
-}
-
-void folder_dd_select() {
-	size_t new_folder = kapp.folder_dd->get_selected();
-	if (kapp.selected_folder != new_folder) {
-		kapp.catview.catlist.clear();
-		kapp.list.clear();
-		kapp.lui.strings.clear();
-		if (new_folder == 0) {
-			kapp.scanned_folders.clear();
-			scan_combined();
-		} else {
-			scan_folder(kapp.scanned_folders[new_folder]);
-		}
-		for (auto const& [group, apps] : kapp.catview.catlist) {
-			kapp.lui.strings.push_back(group);
-		}
-		std::sort(kapp.lui.strings.begin(), kapp.lui.strings.end());
-		kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
-		kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
-		kapp.lui.listem->set_model(kapp.lui.ns);
-		kapp.selected_folder = new_folder;
-	}
-}
-
-bool new_window_close() {
-	kapp.new_window->unset_application();
-	return false;
-}
-
-void add_new_button_clicked(void) {
-	kapp.new_window->show();
-	kapp.new_window->set_application(kapp.app);
-	kapp.new_window->signal_close_request().connect(&new_window_close, false);
-	new_ui();
 }
 
 void list_selection_changed(guint p, guint p2, Glib::RefPtr<Gtk::SingleSelection> sm, bool is_category, bool is_mapped, std::string list_ind) {
@@ -217,6 +183,7 @@ void listview_signals(bool is_catview, bool is_mapped) {
 		kapp.lui.bind = kapp.lui.lif->signal_bind().connect(std::bind(applist_bind, _1, &kapp.list, &kapp.lmap, is_mapped));
 		kapp.lui.unbind = kapp.lui.lif->signal_unbind().connect(std::bind(applist_unbind, _1));
 		kapp.lui.teardown = kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(applist_teardown));
+		kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&list_selection_changed, kapp.lui.ss, is_catview, false, ""));
 	}
 }
 
@@ -234,8 +201,47 @@ void populate_stringlist(bool is_catview) {
 	}
 }
 
-void deneme(guint p1, guint p2, Glib::RefPtr<Gtk::SingleSelection> ss) {
-	printf("%d %d -> %d\n", p1, p2, ss->get_selected());
+void folder_dd_select() {
+	size_t new_folder = kapp.folder_dd->get_selected();
+	if (kapp.selected_folder != new_folder) {
+		kapp.catview.catlist.clear();
+		kapp.list.clear();
+		kapp.lui.strings.clear();
+		if (new_folder == 0) {
+			kapp.scanned_folders.clear();
+			scan_combined();
+		} else {
+			if (!scan_folder(kapp.scanned_folders[new_folder]))
+				return;
+		}
+		populate_stringlist(is_catview);
+		if (kapp.lui.strings.empty()) return;
+		kapp.lui.sl.reset();
+		kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
+		if (is_catview) {
+			kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
+			kapp.lui.listem->set_model(kapp.lui.ns);
+		} else {
+			kapp.lui.ss.reset();
+			kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
+			if (!kapp.lui.ss) return;
+			kapp.lui.listem->set_model(kapp.lui.ss);
+		}
+		listview_signals(is_catview, false);
+		kapp.selected_folder = new_folder;
+	}
+}
+
+bool new_window_close() {
+	kapp.new_window->unset_application();
+	return false;
+}
+
+void add_new_button_clicked(void) {
+	kapp.new_window->show();
+	kapp.new_window->set_application(kapp.app);
+	kapp.new_window->signal_close_request().connect(&new_window_close, false);
+	new_ui();
 }
 
 void initialize_list() {
@@ -245,7 +251,6 @@ void initialize_list() {
 		kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
 	} else {
 		kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
-		kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&list_selection_changed, kapp.lui.ss, is_catview, false, ""));
 	}
 
 	kapp.lui.lif = Gtk::SignalListItemFactory::create();

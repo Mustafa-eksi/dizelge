@@ -2,6 +2,7 @@
 #include <gtkmm.h>
 #include "desktop.cpp"
 #include "Common.cpp"
+#include "gtkmm/entry.h"
 
 /*
  * This file contains only stuff in right panel (where the entry information is displayed).
@@ -11,11 +12,11 @@ typedef struct {
 	deskentry::DesktopEntry de;
 	// TODO: replace categories_entry with a listview or smth.
 	Gtk::Entry *filename_entry, *exec_entry, *comment_entry, *categories_entry,
-		   *generic_name_entry, *path_entry;
+		   *generic_name_entry, *path_entry, *iconname_entry;
 	Gtk::CheckButton *terminal_check, *dgpu_check, *single_main_window;
 	Gtk::DropDown *type_drop;
 	Gtk::Image *icon;
-	Gtk::Button *open_file_button, *save_button;
+	Gtk::Button *open_file_button, *save_button, *choose_image;
 } EntryUi;
 
 const std::vector<Glib::ustring> TypeLookup = {"Application", "Link", "Directory"};
@@ -65,6 +66,7 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 	eui->terminal_check->set_active(de_val(de, "Terminal") == "true");
 	eui->dgpu_check->set_active(de_val(de, "PrefersNonDefaultGPU") == "true");
 	eui->single_main_window->set_active(de_val(de, "SingleMainWindow") == "true");
+	eui->iconname_entry->set_text(de_val(de, "Icon"));
 
 	// set type dropdown
 	auto ddsl = Gtk::StringList::create(TypeLookup);
@@ -81,6 +83,9 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 	set_icon(eui->icon, de_val(de, "Icon"));
 }
 
+void choose_image_clicked(void) {
+
+}
 
 void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder) {
 	eui->terminal_check 	= builder->get_widget<Gtk::CheckButton>("terminal_check");
@@ -89,14 +94,17 @@ void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder) {
 	eui->type_drop 		= builder->get_widget<Gtk::DropDown>("type_drop");
 	eui->open_file_button 	= builder->get_widget<Gtk::Button>("open_file_button");
 	eui->save_button 	= builder->get_widget<Gtk::Button>("save_button");
+	eui->choose_image 	= builder->get_widget<Gtk::Button>("select_file_for_icon");
 	eui->filename_entry 	= builder->get_widget<Gtk::Entry>("filename_entry");
 	eui->exec_entry 	= builder->get_widget<Gtk::Entry>("exec_entry");
 	eui->comment_entry 	= builder->get_widget<Gtk::Entry>("comment_entry");
 	eui->categories_entry 	= builder->get_widget<Gtk::Entry>("categories_entry");
 	eui->generic_name_entry = builder->get_widget<Gtk::Entry>("generic_name_entry");
 	eui->path_entry 	= builder->get_widget<Gtk::Entry>("path_entry");
+	eui->iconname_entry 	= builder->get_widget<Gtk::Entry>("iconname_entry");
 	eui->icon 		= builder->get_widget<Gtk::Image>("app_icon");
 
 	eui->save_button->signal_clicked().connect(std::bind(save_button_clicked, eui));
 	eui->open_file_button->signal_clicked().connect(sigc::bind(&open_file_clicked, &eui->de.path));
+	eui->choose_image->signal_clicked().connect(sigc::ptr_fun(&choose_image_clicked));
 }

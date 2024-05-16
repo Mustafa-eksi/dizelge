@@ -3,6 +3,7 @@ using Gtk 4.0;
 Window main_window {
   default-height: 500;
   default-width: 1000;
+
   Box {
     orientation: horizontal;
     spacing: 10;
@@ -10,6 +11,7 @@ Window main_window {
     margin-top: 10;
     margin-end: 10;
     margin-bottom: 10;
+
     Box sidepanel {
       orientation: vertical;
       hexpand: true;
@@ -19,17 +21,21 @@ Window main_window {
         orientation: vertical;
         margin-bottom: 10;
         spacing: 10;
+
         DropDown paths_to_scan {
           hexpand: false;
           width-request: 0;
         }
+
         Box {
           orientation: horizontal;
           spacing: 10;
+
           Entry etxt {
             placeholder-text: 'isim yaz';
             hexpand: true;
           }
+
           Button add_new_button {
             label: "+";
           }
@@ -40,192 +46,242 @@ Window main_window {
         propagate-natural-height: true;
         hexpand: true;
 
-        ListView listem {
-          
-        }
+        ListView listem {}
       }
     }
-Box {
-  orientation: vertical;
-  Notebook {
-//    orientation: vertical;
-    halign: fill;
-    hexpand: true;
-    Box MoreImportant {
-      hexpand: true;
-      margin-start: 12;
-      margin-top: 12;
-      valign: start;
 
-      Image app_icon {
-        icon-name: "applications-other";
-        icon-size: large;
-        pixel-size: 96;
-      }
-
-      Box {
-        hexpand: true;
-        orientation: vertical;
-        valign: start;
-        margin-start: 12;
-        margin-end: 16;
-        spacing: 12;
-        Box { // Name
-          hexpand: true;
-          orientation: horizontal;
-          margin-top: 12;
-
-          Label {
-            margin-end: 12;
-            label: "Name:";
-          }
-
-          Entry filename_entry {
-            placeholder-text: "file";
-            hexpand: true;
-          }
-        }
-        Box { // Exec
-          // margin-top: 12;
-          orientation: horizontal;
-
-          Label {
-            margin-end: 12;
-            label: "Exec:";
-          }
-
-          Entry exec_entry {
-            placeholder-text: "exec";
-            hexpand: true;
-          }
-        }
-      }
-    }
-    [tab]
-    Label {
-      label: "Basic";
-    }
-    Box NotSoImportant {
+    Box {
       orientation: vertical;
-      vexpand: true;
-      margin-start: 12;
-      margin-end: 16;
-      margin-bottom: 16;
-      hexpand: true;
-      spacing: 12;
-       Box {
-          hexpand: true;
-          orientation: horizontal;
-          margin-top: 12;
-          Label {
-            margin-end: 12;
-            label: "Type:";
-          }
-          DropDown type_drop {
+
+      Notebook {
+        //    orientation: vertical;
+        halign: fill;
+        hexpand: true;
+
+        Box Vert {
+          orientation: vertical;
+
+          Box MoreImportant {
+            hexpand: true;
+            margin-start: 12;
             margin-top: 12;
+            valign: start;
+
+            Image app_icon {
+              icon-name: "applications-other";
+              icon-size: large;
+              pixel-size: 96;
+            }
+
+            Box {
+              orientation: vertical;
+              vexpand: false;
+              margin-end: 12;
+              margin-start: 12;
+              spacing: 10;
+              Box { // Icon Name
+                hexpand: true;
+                orientation: horizontal;
+                margin-top: 12;
+
+                Label {
+                  margin-end: 12;
+                  label: "Icon name:";
+                }
+
+                Entry iconname_entry {
+                  hexpand: true;
+                }
+              }
+
+              Button select_file_for_icon {
+                vexpand: false;
+                label: "Choose image";
+              }
+            }
           }
 
+          Box {
+            hexpand: true;
+            orientation: vertical;
+            valign: start;
+            margin-start: 12;
+            margin-end: 16;
+            spacing: 12;
+
+            Box { // Name
+              hexpand: true;
+              orientation: horizontal;
+              margin-top: 12;
+
+              Label {
+                margin-end: 12;
+                label: "Name:";
+              }
+
+              Entry filename_entry {
+                placeholder-text: "file";
+                hexpand: true;
+              }
+            }
+
+            Box { // Exec
+              // margin-top: 12;
+              orientation: horizontal;
+
+              Label {
+                margin-end: 12;
+                label: "Exec:";
+              }
+
+              Entry exec_entry {
+                placeholder-text: "exec";
+                hexpand: true;
+              }
+            }
+          }
         }
 
-      Box { // Generic Name
-        orientation: horizontal;
+        [tab]
         Label {
-          margin-end: 12;
-          label: "Generic Name:";
+          label: "Basic";
         }
 
-        Entry generic_name_entry {
-          // placeholder-text: "Generic Name";
+        Box NotSoImportant {
+          orientation: vertical;
+          vexpand: true;
+          margin-start: 12;
+          margin-end: 16;
+          margin-bottom: 16;
           hexpand: true;
-        }
-      }
-      Box { // Comment
-        // margin-top: 12;
-        orientation: horizontal;
+          spacing: 12;
 
+          Box {
+            hexpand: true;
+            orientation: horizontal;
+            margin-top: 12;
+
+            Label {
+              margin-end: 12;
+              label: "Type:";
+            }
+
+            DropDown type_drop {
+              margin-top: 12;
+            }
+          }
+
+          Box { // Generic Name
+            orientation: horizontal;
+
+            Label {
+              margin-end: 12;
+              label: "Generic Name:";
+            }
+
+            Entry generic_name_entry {
+              // placeholder-text: "Generic Name";
+              hexpand: true;
+            }
+          }
+
+          Box { // Comment
+            // margin-top: 12;
+            orientation: horizontal;
+
+            Label {
+              margin-end: 12;
+              label: "Comment:";
+            }
+
+            Entry comment_entry {
+              // placeholder-text: "Comment";
+              hexpand: true;
+            }
+          }
+
+          Box { // Category
+            // margin-top: 12;
+            orientation: horizontal;
+
+            Label {
+              margin-end: 12;
+              label: "Categories:";
+            }
+
+            Entry categories_entry {
+              // placeholder-text: "Category";
+              hexpand: true;
+            }
+          }
+
+          Box { // Path
+            // margin-top: 12;
+            orientation: horizontal;
+
+            Label {
+              margin-end: 12;
+              label: "Working Directory:";
+            }
+
+            Entry path_entry {
+              // placeholder-text: "Path";
+              hexpand: true;
+            }
+          }
+
+          CheckButton terminal_check {
+            label: "Run in terminal";
+          }
+
+          CheckButton dgpu_check {
+            label: "Prefers discrete GPU";
+            has-tooltip: true;
+            tooltip-text: "If true, the application prefers to be run on a more powerful discrete GPU if available.";
+          }
+
+          CheckButton single_main_window {
+            label: "Single Main Window";
+            has-tooltip: true;
+            tooltip-text: "If true, the application has a single main window, and does not support having an additional one opened.";
+          }
+        }
+
+        [tab]
         Label {
-          margin-end: 12;
-          label: "Comment:";
-        }
-
-        Entry comment_entry {
-          // placeholder-text: "Comment";
-          hexpand: true;
+          label: "Advanced";
         }
       }
-      Box { // Category
-        //margin-top: 12;
-        orientation: horizontal;
 
-        Label {
-          margin-end: 12;
-          label: "Categories:";
+      Box bottombar {
+        valign: center;
+        vexpand: true;
+        halign: end;
+        margin-end: 12;
+
+        Button open_file_button {
+          margin-end: 8;
+          icon-name: "search-folder-symbolic";
+          label: "Open file";
         }
 
-        Entry categories_entry {
-          //placeholder-text: "Category";
-          hexpand: true;
-        }
-      }
-      Box { // Path
-        //margin-top: 12;
-        orientation: horizontal;
+        Button save_button {
+          styles [
+            "suggested-action",
+          ]
 
-        Label {
-          margin-end: 12;
-          label: "Working Directory:";
+          icon-name: "checkmark";
+          label: "Save";
         }
-
-        Entry path_entry {
-          // placeholder-text: "Path";
-          hexpand: true;
-        }
-      }
-      CheckButton terminal_check {
-        label: "Run in terminal";
-      }
-      CheckButton dgpu_check {
-        label: "Prefers discrete GPU";
-        has-tooltip: true;
-        tooltip-text: "If true, the application prefers to be run on a more powerful discrete GPU if available.";
-      }
-      CheckButton single_main_window {
-        label: "Single Main Window";
-        has-tooltip: true;
-        tooltip-text: "If true, the application has a single main window, and does not support having an additional one opened.";
       }
     }
-    [tab]
-    Label {
-      label: "Advanced";
-    }
-  }
-  Box bottombar {
-    valign: center;
-    vexpand: true;
-    halign: end;
-    margin-end: 12;
-    
-    Button open_file_button {
-      margin-end: 8;
-      icon-name: "search-folder-symbolic";
-      label: "Open file";
-    }
-    Button save_button {
-      styles [
-        "suggested-action",
-      ]
-      icon-name: "checkmark";
-      label: "Save";
-    }
-  }
-}
   }
 }
 
 Window new_desktop_window {
   default-height: 500;
   default-width: 1000;
+
   Label {
     label: "Hello world!";
   }

@@ -2,9 +2,6 @@
 #include <gtkmm.h>
 #include "desktop.cpp"
 #include "Common.cpp"
-#include "gtkmm/enums.h"
-#include "gtkmm/object.h"
-#include "pangomm/attrlist.h"
 
 #define DEFAULT_APP_ATTR "0 -1 font \"Sans 14\""
 
