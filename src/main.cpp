@@ -183,7 +183,7 @@ void listview_signals(bool is_catview, bool is_mapped) {
 		kapp.lui.bind = kapp.lui.lif->signal_bind().connect(std::bind(applist_bind, _1, &kapp.list, &kapp.lmap, is_mapped));
 		kapp.lui.unbind = kapp.lui.lif->signal_unbind().connect(std::bind(applist_unbind, _1));
 		kapp.lui.teardown = kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(applist_teardown));
-		kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&list_selection_changed, kapp.lui.ss, is_catview, false, ""));
+		kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&list_selection_changed, kapp.lui.ss, is_catview, is_mapped, ""));
 	}
 }
 
