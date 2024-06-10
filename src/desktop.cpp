@@ -258,7 +258,7 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
         }
 }
 
-void write_to_file(UnparsedEntry pe, std::string out_path) {
+void write_to_file(UnparsedEntry pe, std::string out_path, bool is_new=false) {
         std::string output_file = "#!/usr/bin/env xdg-open\n";
         for (auto const& [group, pg] : pe)
         {
@@ -270,11 +270,15 @@ void write_to_file(UnparsedEntry pe, std::string out_path) {
                 }
                 output_file += "\n";
         }
-        if (access(out_path.c_str(), W_OK) != 0) {
+        if (access(out_path.c_str(), W_OK) != 0 && !is_new) {
                 system(("pkexec bash -c \"echo \\\""+output_file+"\\\" > "+out_path+"\"").c_str());
                 return;
         }
         std::ofstream OutStream(out_path);
+        printf("hmm: %s\n", out_path.c_str());
+        if (!OutStream) {
+                printf("hmmadsadsa: %s\n", out_path.c_str());
+        }
         OutStream << output_file;
         OutStream.close();
 }

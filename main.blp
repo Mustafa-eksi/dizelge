@@ -37,7 +37,10 @@ Window main_window {
           }
 
           Button add_new_button {
-            label: "+";
+            icon-name: "contact-new";
+          }
+          Button add_wap_button {
+            icon-name: "internet-services";
           }
         }
       }
@@ -167,7 +170,7 @@ Window main_window {
             }
 
             DropDown type_drop {
-              margin-top: 12;
+              sensitive: false;
             }
           }
 
@@ -258,7 +261,13 @@ Window main_window {
         vexpand: true;
         halign: end;
         margin-end: 12;
-
+        Button delete_button {
+          margin-end: 8;
+          styles [
+            "destructive-action",
+          ]
+          label: "Delete";
+        }
         Button open_file_button {
           margin-end: 8;
           icon-name: "search-folder-symbolic";

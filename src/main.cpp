@@ -5,6 +5,7 @@
 #include <gtkmm-4.0/gtkmm/noselection.h>
 #include <gtkmm.h>
 #include <filesystem>
+#include <cstdio>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -19,6 +20,8 @@
 #include "Common.cpp"
 #include "EntryUi.cpp"
 #include "NewShortcut.cpp"
+#include "gtkmm/alertdialog.h"
+#include "gtkmm/enums.h"
 #include "gtkmm/singleselection.h"
 #include "gtkmm/stringobject.h"
 #include "sigc++/functors/ptr_fun.h"
@@ -46,9 +49,11 @@ struct KisayolApp {
 	Gtk::Window *main_window, *entry_window, *new_window;
 
 	// TODO: move these to somewhere.
-	Gtk::Button *add_new_button;
+	Gtk::Button *add_new_button, *add_wap_button, *delete_button;
 	Gtk::Entry *etxt;
 	Gtk::DropDown *folder_dd;
+
+	Glib::RefPtr<Gtk::AlertDialog> ad;
 	
 	std::mutex list_mutex;
 	EntryList list;
@@ -155,8 +160,7 @@ void list_selection_changed(guint p, guint p2, Glib::RefPtr<Gtk::SingleSelection
 	}
 	auto appname = dynamic_cast<Gtk::StringObject*>(sm->get_model()->get_object(selected_index).get())->get_string();
 	auto ind = is_category ? kapp.catview.catlist[list_ind][appname] : is_mapped ? kapp.lmap[appname] : sm->get_selected();
-	kapp.eui.de = kapp.list[ind];
-	set_from_desktop_entry(&kapp.eui, kapp.eui.de);
+	set_from_desktop_entry(&kapp.eui, &kapp.list[ind]);
 }
 
 void listview_signals(bool is_catview, bool is_mapped) {
@@ -180,7 +184,7 @@ void listview_signals(bool is_catview, bool is_mapped) {
 		kapp.lui.teardown = kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(categorylist_teardown));
 	} else {
 		kapp.lui.setup = kapp.lui.lif->signal_setup().connect(sigc::ptr_fun(applist_setup));
-		kapp.lui.bind = kapp.lui.lif->signal_bind().connect(std::bind(applist_bind, _1, &kapp.list, &kapp.lmap, is_mapped));
+		kapp.lui.bind = kapp.lui.lif->signal_bind().connect(std::bind(applist_bind, _1, &kapp.list, &kapp.lmap, is_mapped, kapp.lui.listem));
 		kapp.lui.unbind = kapp.lui.lif->signal_unbind().connect(std::bind(applist_unbind, _1));
 		kapp.lui.teardown = kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(applist_teardown));
 		kapp.lui.ss->signal_selection_changed().connect(sigc::bind(&list_selection_changed, kapp.lui.ss, is_catview, is_mapped, ""));
@@ -237,13 +241,6 @@ bool new_window_close() {
 	return false;
 }
 
-void add_new_button_clicked(void) {
-	kapp.new_window->show();
-	kapp.new_window->set_application(kapp.app);
-	kapp.new_window->signal_close_request().connect(&new_window_close, false);
-	new_ui();
-}
-
 void initialize_list() {
 	populate_stringlist(is_catview);
 	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings); // gtk_string_list_new ((const char * const *) array);
@@ -265,6 +262,65 @@ void initialize_list() {
 	else
 		kapp.lui.listem->set_model(kapp.lui.ss);
 	kapp.lui.listem->set_factory(kapp.lui.lif);
+}
+
+void add_new_button_clicked(void) {
+	deskentry::UnparsedEntry ue;
+	ue["Desktop Entry"]["Name"] = "Enter your shortcut's name here";
+	deskentry::DesktopEntry newentry = {
+		.pe = ue,
+		.type = deskentry::EntryType::Application,
+	};
+
+	kapp.list.push_front(newentry);
+	initialize_list();
+
+	kapp.lui.listem->scroll_to(0, Gtk::ListScrollFlags::SELECT);
+	set_from_desktop_entry(&kapp.eui, &kapp.list.front());
+}
+
+void add_wap_button_clicked(void) {
+	kapp.new_window->show();
+	kapp.new_window->set_application(kapp.app);
+	kapp.new_window->signal_close_request().connect(&new_window_close, false);
+	new_ui();
+}
+
+void erase_current(size_t to_erase) {
+	kapp.list.erase(kapp.list.begin() + to_erase);
+	size_t new_selected = to_erase > 0 ? to_erase-1 : 0;
+	kapp.lui.ss->set_selected(new_selected);
+	set_from_desktop_entry(&kapp.eui, &kapp.list[new_selected]);
+	initialize_list();
+}
+
+void delete_confirm(std::shared_ptr<Gio::AsyncResult>& res, deskentry::DesktopEntry *de) {
+	auto result = kapp.ad->choose_finish(res);
+	if (result == 0) return;
+	if (access(de->path.c_str(), W_OK) != 0) {
+		system(("pkexec bash -c \"rm "+de->path+"\"").c_str());
+	} else {
+		unlink(de->path.c_str());
+	}
+	size_t i = 0;
+	for (auto& b : kapp.list) {
+		if (b.path == de->path)
+			erase_current(i);
+		i++;
+	}
+}
+
+void delete_button_clicked(void) {
+	if (!kapp.eui.de->path.empty()) {
+		kapp.ad.reset();
+		kapp.ad = Gtk::AlertDialog::create("Are you sure to remove '"+kapp.eui.de->path+"'?");
+		kapp.ad->set_buttons({"Cancel", "Confirm"});
+		kapp.ad->set_cancel_button(0);
+		kapp.ad->set_default_button(0);
+		kapp.ad->choose(sigc::bind(&delete_confirm, kapp.eui.de));
+	} else {
+		erase_current(kapp.lui.ss->get_selected());
+	}
 }
 
 void search_entry_changed(bool is_category) {
@@ -339,6 +395,12 @@ void init_ui() {
 
 	kapp.add_new_button = kapp.builder->get_widget<Gtk::Button>("add_new_button");
 	kapp.add_new_button->signal_clicked().connect(&add_new_button_clicked);
+
+	kapp.add_wap_button = kapp.builder->get_widget<Gtk::Button>("add_wap_button");
+	kapp.add_wap_button->signal_clicked().connect(&add_wap_button_clicked);
+
+	kapp.delete_button = kapp.builder->get_widget<Gtk::Button>("delete_button");
+	kapp.delete_button->signal_clicked().connect(&delete_button_clicked);
 
 	kapp.main_window->present();
 }

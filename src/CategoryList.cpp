@@ -51,7 +51,7 @@ void categorylist_bind(const Glib::RefPtr<Gtk::ListItem>& list_item,
 
 	(*catview->factories.get())[strobj] = Gtk::SignalListItemFactory::create();
 	(*catview->factories.get())[strobj]->signal_setup().connect(sigc::ptr_fun(applist_setup));
-	(*catview->factories.get())[strobj]->signal_bind().connect(std::bind(applist_bind, std::placeholders::_1, main_list, &(catview->catlist[strobj]), true));
+	(*catview->factories.get())[strobj]->signal_bind().connect(std::bind(applist_bind, std::placeholders::_1, main_list, &(catview->catlist[strobj]), true, nullptr));
 	(*catview->factories.get())[strobj]->signal_unbind().connect(std::bind(applist_unbind, std::placeholders::_1));
 	(*catview->factories.get())[strobj]->signal_teardown().connect(sigc::ptr_fun(applist_teardown));
 

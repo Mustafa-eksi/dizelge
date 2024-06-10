@@ -3,14 +3,17 @@
 #include "desktop.cpp"
 #include "Common.cpp"
 #include "giomm/cancellable.h"
+#include "giomm/liststore.h"
 #include "glibmm/refptr.h"
+#include "gtkmm/filefilter.h"
+#include "sigc++/functors/ptr_fun.h"
 
 /*
  * This file contains only stuff in right panel (where the entry information is displayed).
  */
 
 typedef struct {
-	deskentry::DesktopEntry de;
+	deskentry::DesktopEntry *de;
 	// TODO: replace categories_entry with a listview or smth.
 	Gtk::Entry *filename_entry, *exec_entry, *comment_entry, *categories_entry,
 		   *generic_name_entry, *path_entry, *iconname_entry;
@@ -18,7 +21,7 @@ typedef struct {
 	Gtk::DropDown *type_drop;
 	Gtk::Image *icon;
 	Gtk::Button *open_file_button, *save_button, *choose_image;
-	Glib::RefPtr<Gtk::FileDialog> fd;
+	Glib::RefPtr<Gtk::FileDialog> fd, save_button_dialog;
 } EntryUi;
 
 const std::vector<Glib::ustring> TypeLookup = {"Application", "Link", "Directory"};
@@ -35,9 +38,9 @@ static void dd_bind(const Glib::RefPtr<Gtk::ListItem>& list_item) {
 	gtk_label_set_text (GTK_LABEL(lb), gtk_string_object_get_string (strobj));
 }
 
-void open_file_clicked(std::string *path) {
-    if (!path->empty())
-		system(("xdg-open "+*path).c_str());
+void open_file_clicked(EntryUi *eui) {
+    if (eui != nullptr && !eui->de->path.empty())
+		system(("xdg-open "+eui->de->path).c_str());
 }
 
 void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
@@ -53,13 +56,27 @@ void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
 	de->pe["Desktop Entry"]["SingleMainWindow"] 	= eui->single_main_window->get_active() ? "true" : "false";
 }
 
-void save_button_clicked(EntryUi *eui) {
-	sync_pe(eui, &eui->de);
-	auto de = eui->de;
-	deskentry::write_to_file(de.pe, de.path);
+void save_button_callback(std::shared_ptr<Gio::AsyncResult>& res, EntryUi *eui) {
+	auto folder = eui->save_button_dialog->save_finish(res);
+	auto folderpath = folder->get_path();
+	if (folderpath.empty()) return;
+	eui->de->path = folderpath;
+	deskentry::write_to_file(eui->de->pe, eui->de->path, true);
 }
 
-void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
+void save_button_clicked(EntryUi *eui) {
+	sync_pe(eui, eui->de);
+	auto de = eui->de;
+	if (de->path.empty()) {
+		eui->save_button_dialog->save(sigc::bind(&save_button_callback, eui));
+		return;
+	}
+	deskentry::write_to_file(de->pe, de->path);
+}
+
+void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry *de) {
+	eui->de = de;
+
 	eui->filename_entry->set_text(de_val(de, "Name"));
 	eui->exec_entry->set_text(de_val(de, "Exec"));
 	eui->comment_entry->set_text(de_val(de, "Comment"));
@@ -80,7 +97,7 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry de) {
 	
 	eui->type_drop->set_model(ddss);
 	eui->type_drop->set_factory(factory);
-	eui->type_drop->set_selected(de.type);
+	eui->type_drop->set_selected(de->type);
 
 	// Set icon
 	set_icon(eui->icon, de_val(de, "Icon"));
@@ -90,7 +107,7 @@ void async_callback(std::shared_ptr<Gio::AsyncResult>& res, EntryUi *eui) {
 	auto file = eui->fd->open_finish(res);
 	auto filepath = file->get_path();
 	printf("filepath: %s\n", filepath.c_str());
-	eui->de.pe["Desktop Entry"]["Icon"] = filepath;
+	eui->de->pe["Desktop Entry"]["Icon"] = filepath;
 	set_icon(eui->icon, filepath);
 	eui->iconname_entry->set_text(de_val(eui->de, "Icon"));
 }
@@ -116,17 +133,16 @@ void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder) {
 	eui->iconname_entry 	= builder->get_widget<Gtk::Entry>("iconname_entry");
 	eui->icon 				= builder->get_widget<Gtk::Image>("app_icon");
 	eui->fd = Gtk::FileDialog::create();
-	GListStore *gls = g_list_store_new(gtk_file_filter_get_type());
-	GtkFileFilter *filter = gtk_file_filter_new();
-	GtkFileFilter *filterpng = gtk_file_filter_new();
-	gtk_file_filter_add_mime_type(filter, "image/svg+xml");
-	gtk_file_filter_add_mime_type(filter, "image/png");
-	gtk_file_filter_set_name(filter, "Image Formats");
-	g_list_store_append(gls, filter);
-	//g_list_store_append(gls, filterpng);
-	gtk_file_dialog_set_filters(eui->fd->gobj(), G_LIST_MODEL(gls));
+	// What happened to gls1???
+	auto gls2 = Gio::ListStore<Gtk::FileFilter>::create();
+	auto filter = Gtk::FileFilter::create();
+	filter->add_pattern("*.png *.svg *.jpg *.jpeg *.gif");
+	filter->set_name("Image Formats");
+	gls2->append(filter);
+	eui->fd->set_filters(gls2);
 
+	eui->save_button_dialog = Gtk::FileDialog::create();
 	eui->save_button->signal_clicked().connect(std::bind(save_button_clicked, eui));
-	eui->open_file_button->signal_clicked().connect(sigc::bind(&open_file_clicked, &eui->de.path));
+	eui->open_file_button->signal_clicked().connect(sigc::bind(&open_file_clicked, eui));
 	eui->choose_image->signal_clicked().connect(sigc::bind(&choose_image_clicked, eui));
 }
