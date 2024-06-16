@@ -33,7 +33,7 @@ void categorylist_teardown(const Glib::RefPtr<Gtk::ListItem> &li) {
 void categorylist_bind(const Glib::RefPtr<Gtk::ListItem>& list_item,
                      CategoryView *catview,
                      EntryList *main_list,
-                     ListSelectionCallback callback) {
+                     ListSelectionCallback callback, std::string expand_this) {
 	auto lb = dynamic_cast<Gtk::Expander *>(list_item.get()->get_child());
 	Glib::ustring strobj = gtk_string_object_get_string(GTK_STRING_OBJECT(gtk_list_item_get_item (list_item->gobj())));
 	lb->set_label(strobj.c_str());
@@ -61,6 +61,11 @@ void categorylist_bind(const Glib::RefPtr<Gtk::ListItem>& list_item,
 	(*catview->category_views.get())[strobj]->set_model(catview->models->at(strobj));
 	(*catview->category_views.get())[strobj]->set_factory(catview->factories->at(strobj));
 	(*catview->category_views.get())[strobj]->set_single_click_activate(false);
+
+	if (strcmp(strobj.c_str(), expand_this.c_str()) == 0) {
+		lb->set_expanded(true);
+		catview->models->at(strobj)->set_selected(0);
+	}
 
 	lb->set_child(*dynamic_cast<Gtk::Widget*>(catview->category_views->at(strobj)));
 }

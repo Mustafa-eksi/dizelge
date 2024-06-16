@@ -8,4 +8,4 @@ ui: main.blp
 	blueprint-compiler compile main.blp --output dizelge.ui
 
 main: src/*
-	g++ src/main.cpp -o dizelge $(CFLAGS) $(LIBS)
+	clang++ src/main.cpp -o dizelge $(CFLAGS) $(LIBS)

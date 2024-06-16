@@ -131,6 +131,18 @@ void print_pe(ParsedEntry pe) {
         return pe;
 }*/
 
+void trim_left(std::string &res) {
+        while (res.length() > 1 && res.at(0) == ' ') {
+                res = res.substr(1);
+        }
+}
+
+void trim_right(std::string &res) {
+        while (res.length() > 1 && res.back() == ' ') {
+                res.pop_back();
+        }
+}
+
 std::optional<UnparsedEntry> read_file(std::string filepath) {
         std::string buffer;
         UnparsedEntry unde;
@@ -172,15 +184,11 @@ std::optional<UnparsedEntry> read_file(std::string filepath) {
                         std::string key = current_line.substr(0, eq_pos);
                         if (key.empty())
                                 continue;
-                        while (key.length() > 1 && key.at(key.length()-1) == ' ') {
-                                key.pop_back();
-                        }
+                        trim_right(key);
                         std::string value = current_line.substr(eq_pos+1);
                         if (value.empty())
                                 continue;
-                        while (value.length() > 1 && value.at(0) == ' ') {
-                                value = value.substr(1);
-                        }
+                        trim_left(value);
                         unde[current_group][key] = value;
                 }
 skip:
@@ -224,8 +232,11 @@ CatList parse_categories(UnparsedEntry pe) {
                         pos = it.find(";");
                 }
                 // Add last element if array doesn't end with a semicolon
-                if (!it.empty())
+                if (!it.empty()) {
+                        trim_left(it);
+                        trim_right(it);
                         res.push_back(it);
+                }
         } else if (!pe["Desktop Entry"]["Categories"].empty()){
                 res.push_back(pe["Desktop Entry"]["Categories"]);
         }

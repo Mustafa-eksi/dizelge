@@ -2,7 +2,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <exception>
-#include <gtkmm-4.0/gtkmm/noselection.h>
 #include <gtkmm.h>
 #include <filesystem>
 #include <cstdio>
@@ -20,13 +19,9 @@
 #include "Common.cpp"
 #include "EntryUi.cpp"
 #include "NewShortcut.cpp"
-#include "gtkmm/alertdialog.h"
-#include "gtkmm/enums.h"
-#include "gtkmm/singleselection.h"
-#include "gtkmm/stringobject.h"
-#include "sigc++/functors/ptr_fun.h"
 
 const std::string EXECUTABLE_NAME = "dizelge";
+const std::string NEW_SHORTCUT_CAT = "MyShortcuts";
 
 /*
  * This file contains some ui stuff and general stuff that doesn't fit to other files.
@@ -34,7 +29,7 @@ const std::string EXECUTABLE_NAME = "dizelge";
 
 typedef struct {
 	Gtk::ListView *listem;
-	std::vector<Glib::ustring> strings;
+	std::deque<Glib::ustring> strings;
 	Glib::RefPtr<Gtk::StringList> sl;
 	Glib::RefPtr<Gtk::SignalListItemFactory> lif;
 	Glib::RefPtr<Gtk::NoSelection> ns;
@@ -75,7 +70,7 @@ struct KisayolApp kapp = { 0 };
 using namespace std::placeholders; // This is to avoid writing "std::placeholders::_1" which makes code harder to read.
 
 // TODO: Put these into settings.
-const bool is_catview = false;
+const bool is_catview = true;
 
 bool scan_file(KisayolApp *kapp, std::string path) {
 	auto pde = deskentry::parse_file(path, kapp->XDG_ENV);
@@ -93,6 +88,14 @@ bool scan_file(KisayolApp *kapp, std::string path) {
 		kapp->list_mutex.unlock();
 	}
 	return true;
+}
+
+void recalculate_catlist() {
+	for (size_t i = 0; i < kapp.list.size(); i++) {
+		for (const auto& c : kapp.list[i].Categories) {
+			kapp.catview.catlist[c][kapp.list[i].pe["Desktop Entry"]["Name"]] = i;
+		}
+	}
 }
 
 bool scan_folder(std::string folder_path) {
@@ -163,7 +166,7 @@ void list_selection_changed(guint p, guint p2, Glib::RefPtr<Gtk::SingleSelection
 	set_from_desktop_entry(&kapp.eui, &kapp.list[ind]);
 }
 
-void listview_signals(bool is_catview, bool is_mapped) {
+void listview_signals(bool is_catview, bool is_mapped, std::string added_new="") {
 	if (kapp.lui.setup || kapp.lui.bind || kapp.lui.unbind || kapp.lui.teardown) {
 		kapp.lui.setup.disconnect();
 		kapp.lui.bind.disconnect();
@@ -179,7 +182,7 @@ void listview_signals(bool is_catview, bool is_mapped) {
 		kapp.catview.factories = std::make_shared<FactoryList>(FactoryList());
 		kapp.lui.setup = kapp.lui.lif->signal_setup().connect(std::bind(categorylist_setup, _1, is_mapped));
 		kapp.lui.bind = kapp.lui.lif->signal_bind().connect(std::bind(categorylist_bind, _1,
-													  &kapp.catview, &kapp.list, &list_selection_changed));
+													  &kapp.catview, &kapp.list, &list_selection_changed, added_new));
 		kapp.lui.unbind = kapp.lui.lif->signal_unbind().connect(std::bind(categorylist_unbind, _1, kapp.catview.category_views, &kapp.catview));
 		kapp.lui.teardown = kapp.lui.lif->signal_teardown().connect(sigc::ptr_fun(categorylist_teardown));
 	} else {
@@ -194,10 +197,16 @@ void listview_signals(bool is_catview, bool is_mapped) {
 void populate_stringlist(bool is_catview) {
 	kapp.lui.strings.clear();
 	if (is_catview) {
+		bool myshortcuts = false;
 		for (auto const& [group, apps] : kapp.catview.catlist) {
-			kapp.lui.strings.push_back(group);
+			if (group.compare(NEW_SHORTCUT_CAT) != 0)
+				kapp.lui.strings.push_back(group);
+			else
+				myshortcuts = true;
 		}
 		std::sort(kapp.lui.strings.begin(), kapp.lui.strings.end());
+		if (myshortcuts)
+			kapp.lui.strings.push_front(NEW_SHORTCUT_CAT);
 	} else {
 		for (auto app : kapp.list) {
 			kapp.lui.strings.push_back(app.pe["Desktop Entry"]["Name"]);
@@ -221,7 +230,7 @@ void folder_dd_select() {
 		populate_stringlist(is_catview);
 		if (kapp.lui.strings.empty()) return;
 		kapp.lui.sl.reset();
-		kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
+		kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()});
 		if (is_catview) {
 			kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
 			kapp.lui.listem->set_model(kapp.lui.ns);
@@ -241,9 +250,9 @@ bool new_window_close() {
 	return false;
 }
 
-void initialize_list() {
+void initialize_list(std::string added_new="") {
 	populate_stringlist(is_catview);
-	kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings); // gtk_string_list_new ((const char * const *) array);
+	kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()}); // gtk_string_list_new ((const char * const *) array);
 	if (is_catview) {
 		kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
 	} else {
@@ -252,7 +261,7 @@ void initialize_list() {
 
 	kapp.lui.lif = Gtk::SignalListItemFactory::create();
 
-	listview_signals(is_catview, false);
+	listview_signals(is_catview, false, added_new);
 
 	kapp.lui.listem = kapp.builder->get_widget<Gtk::ListView>("listem");
 	if (!kapp.lui.listem)
@@ -267,13 +276,17 @@ void initialize_list() {
 void add_new_button_clicked(void) {
 	deskentry::UnparsedEntry ue;
 	ue["Desktop Entry"]["Name"] = "Enter your shortcut's name here";
+	ue["Desktop Entry"]["Categories"] = NEW_SHORTCUT_CAT;
 	deskentry::DesktopEntry newentry = {
 		.pe = ue,
 		.type = deskentry::EntryType::Application,
+		.Categories = {NEW_SHORTCUT_CAT},
 	};
 
 	kapp.list.push_front(newentry);
-	initialize_list();
+	// kapp.catview.catlist[newentry.Categories.front()][ue["Desktop Entry"]["Name"]] = 0;
+	recalculate_catlist();
+	initialize_list(NEW_SHORTCUT_CAT);
 
 	kapp.lui.listem->scroll_to(0, Gtk::ListScrollFlags::SELECT);
 	set_from_desktop_entry(&kapp.eui, &kapp.list.front());
@@ -343,7 +356,7 @@ void search_entry_changed(bool is_category) {
 		for (auto const& [name, _b] : ce) {
 			kapp.lui.strings.push_back(name);
 		}
-		kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
+		kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()});
 		kapp.lui.ns.reset();
 		kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
 		kapp.lui.lif->signal_setup().connect(std::bind(categorylist_setup, _1, !filter_text.empty()));
@@ -356,7 +369,7 @@ void search_entry_changed(bool is_category) {
 				kapp.lmap[kapp.list[i].pe["Desktop Entry"]["Name"]] = i;
 			}
 		}
-		kapp.lui.sl = Gtk::StringList::create(kapp.lui.strings);
+		kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()});
 		kapp.lui.ss.reset();
 		kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
 		listview_signals(false, true);
