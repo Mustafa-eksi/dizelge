@@ -270,7 +270,7 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
 }
 
 void write_to_file(UnparsedEntry pe, std::string out_path, bool is_new=false) {
-        std::string output_file = "#!/usr/bin/env xdg-open\n";
+        std::string output_file;// = "#!/usr/bin/env xdg-open\n";
         for (auto const& [group, pg] : pe)
         {
                 output_file += "["+group+"]\n";

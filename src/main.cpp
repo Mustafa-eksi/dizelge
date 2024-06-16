@@ -18,7 +18,7 @@
 #include "CategoryList.cpp"
 #include "Common.cpp"
 #include "EntryUi.cpp"
-#include "NewShortcut.cpp"
+#include "WebApp.cpp"
 #include "gtkmm/stringobject.h"
 
 const std::string EXECUTABLE_NAME = "dizelge";
@@ -301,7 +301,7 @@ void add_wap_button_clicked(void) {
 	kapp.new_window->show();
 	kapp.new_window->set_application(kapp.app);
 	kapp.new_window->signal_close_request().connect(&new_window_close, false);
-	new_ui();
+	new_ui(kapp.builder);
 }
 
 void erase_current(size_t to_erase) {
