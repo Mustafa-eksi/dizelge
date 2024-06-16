@@ -286,9 +286,8 @@ void write_to_file(UnparsedEntry pe, std::string out_path, bool is_new=false) {
                 return;
         }
         std::ofstream OutStream(out_path);
-        printf("hmm: %s\n", out_path.c_str());
         if (!OutStream) {
-                printf("hmmadsadsa: %s\n", out_path.c_str());
+                printf("UNKNOWN ERROR: Can't open file stream. File path: %s\n", out_path.c_str());
         }
         OutStream << output_file;
         OutStream.close();

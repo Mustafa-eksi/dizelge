@@ -19,6 +19,7 @@
 #include "Common.cpp"
 #include "EntryUi.cpp"
 #include "NewShortcut.cpp"
+#include "gtkmm/stringobject.h"
 
 const std::string EXECUTABLE_NAME = "dizelge";
 const std::string NEW_SHORTCUT_CAT = "MyShortcuts";
@@ -91,6 +92,7 @@ bool scan_file(KisayolApp *kapp, std::string path) {
 }
 
 void recalculate_catlist() {
+	kapp.catview.catlist.clear();
 	for (size_t i = 0; i < kapp.list.size(); i++) {
 		for (const auto& c : kapp.list[i].Categories) {
 			kapp.catview.catlist[c][kapp.list[i].pe["Desktop Entry"]["Name"]] = i;
@@ -214,42 +216,6 @@ void populate_stringlist(bool is_catview) {
 	}
 }
 
-void folder_dd_select() {
-	size_t new_folder = kapp.folder_dd->get_selected();
-	if (kapp.selected_folder != new_folder) {
-		kapp.catview.catlist.clear();
-		kapp.list.clear();
-		kapp.lui.strings.clear();
-		if (new_folder == 0) {
-			kapp.scanned_folders.clear();
-			scan_combined();
-		} else {
-			if (!scan_folder(kapp.scanned_folders[new_folder]))
-				return;
-		}
-		populate_stringlist(is_catview);
-		if (kapp.lui.strings.empty()) return;
-		kapp.lui.sl.reset();
-		kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()});
-		if (is_catview) {
-			kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
-			kapp.lui.listem->set_model(kapp.lui.ns);
-		} else {
-			kapp.lui.ss.reset();
-			kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
-			if (!kapp.lui.ss) return;
-			kapp.lui.listem->set_model(kapp.lui.ss);
-		}
-		listview_signals(is_catview, false);
-		kapp.selected_folder = new_folder;
-	}
-}
-
-bool new_window_close() {
-	kapp.new_window->unset_application();
-	return false;
-}
-
 void initialize_list(std::string added_new="") {
 	populate_stringlist(is_catview);
 	kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()}); // gtk_string_list_new ((const char * const *) array);
@@ -271,6 +237,45 @@ void initialize_list(std::string added_new="") {
 	else
 		kapp.lui.listem->set_model(kapp.lui.ss);
 	kapp.lui.listem->set_factory(kapp.lui.lif);
+}
+
+void folder_dd_select() {
+	size_t new_folder = kapp.folder_dd->get_selected();
+	if (kapp.selected_folder != new_folder) {
+		kapp.catview.catlist.clear();
+		kapp.list.clear();
+		kapp.lui.strings.clear();
+		if (new_folder == 0) {
+			kapp.scanned_folders.clear();
+			scan_combined();
+		} else {
+			if (!scan_folder(kapp.scanned_folders[new_folder]))
+				return;
+		}
+		recalculate_catlist();
+		initialize_list();
+		/*populate_stringlist(is_catview);
+		if (kapp.lui.strings.empty()) return;
+		kapp.lui.sl.reset();
+		kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()});
+		if (is_catview) {
+			kapp.lui.ns.reset();
+			kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
+			kapp.lui.listem->set_model(kapp.lui.ns);
+		} else {
+			kapp.lui.ss.reset();
+			kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
+			if (!kapp.lui.ss) return;
+			kapp.lui.listem->set_model(kapp.lui.ss);
+		}*/
+		//listview_signals(is_catview, false);
+		kapp.selected_folder = new_folder;
+	}
+}
+
+bool new_window_close() {
+	kapp.new_window->unset_application();
+	return false;
 }
 
 void add_new_button_clicked(void) {
@@ -301,9 +306,13 @@ void add_wap_button_clicked(void) {
 
 void erase_current(size_t to_erase) {
 	kapp.list.erase(kapp.list.begin() + to_erase);
-	size_t new_selected = to_erase > 0 ? to_erase-1 : 0;
-	kapp.lui.ss->set_selected(new_selected);
-	set_from_desktop_entry(&kapp.eui, &kapp.list[new_selected]);
+	if (is_catview) {
+		recalculate_catlist();
+	} else {
+		size_t new_selected = to_erase > 0 ? to_erase-1 : 0;
+		kapp.lui.ss->set_selected(new_selected);
+		set_from_desktop_entry(&kapp.eui, &kapp.list[new_selected]);
+	}
 	initialize_list();
 }
 
@@ -324,16 +333,23 @@ void delete_confirm(std::shared_ptr<Gio::AsyncResult>& res, deskentry::DesktopEn
 }
 
 void delete_button_clicked(void) {
+	size_t to_erase = 0;
 	if (!kapp.eui.de->path.empty()) {
 		kapp.ad.reset();
 		kapp.ad = Gtk::AlertDialog::create("Are you sure to remove '"+kapp.eui.de->path+"'?");
 		kapp.ad->set_buttons({"Cancel", "Confirm"});
 		kapp.ad->set_cancel_button(0);
 		kapp.ad->set_default_button(0);
-		kapp.ad->choose(sigc::bind(&delete_confirm, kapp.eui.de));
-	} else {
-		erase_current(kapp.lui.ss->get_selected());
+		kapp.ad->choose(*kapp.main_window, sigc::bind(&delete_confirm, kapp.eui.de));
+		return;
 	}
+	if (is_catview) {
+		auto catind = dynamic_cast<Gtk::StringObject*>(kapp.catview.models->at(kapp.catview.previous_cat)->get_selected_item().get())->get_string();
+		to_erase = kapp.catview.catlist[kapp.catview.previous_cat][catind];
+	} else {
+		to_erase = kapp.lui.ss->get_selected();
+	}
+	erase_current(to_erase);
 }
 
 void search_entry_changed(bool is_category) {

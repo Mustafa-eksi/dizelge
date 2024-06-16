@@ -54,6 +54,7 @@ void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
 	de->pe["Desktop Entry"]["Terminal"] 		= eui->terminal_check->get_active() ? "true" : "false";
 	de->pe["Desktop Entry"]["PrefersNonDefaultGPU"] 	= eui->dgpu_check->get_active() ? "true" : "false";
 	de->pe["Desktop Entry"]["SingleMainWindow"] 	= eui->single_main_window->get_active() ? "true" : "false";
+	de->pe["Desktop Entry"]["Type"] = TypeLookup[eui->type_drop->get_selected()];
 }
 
 void save_button_callback(std::shared_ptr<Gio::AsyncResult>& res, EntryUi *eui) {
