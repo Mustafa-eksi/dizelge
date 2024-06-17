@@ -13,6 +13,7 @@
 #include <vector>
 #include <functional>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "desktop.cpp"
 #include "CategoryList.cpp"
@@ -25,7 +26,6 @@
 
 const std::string EXECUTABLE_NAME = "dizelge";
 const std::string NEW_SHORTCUT_CAT = "MyShortcuts";
-
 /*
  * This file contains some ui stuff and general stuff that doesn't fit to other files.
  */
@@ -66,6 +66,7 @@ struct KisayolApp {
 	std::vector<Glib::ustring> scanned_folders;
 	size_t selected_folder;
 	char *XDG_ENV;
+	std::string data_home;
 };
 
 // TODO: get rid of global variables
@@ -304,7 +305,7 @@ void add_wap_button_clicked(void) {
 	kapp.new_window->show();
 	kapp.new_window->set_application(kapp.app);
 	kapp.new_window->signal_close_request().connect(&new_window_close, false);
-	new_ui(kapp.builder);
+	new_ui(kapp.builder, kapp.data_home);
 }
 
 void erase_current(size_t to_erase) {
@@ -399,7 +400,6 @@ void search_entry_changed() {
 
 void catview_toggled() {
 	is_catview = kapp.catview_check->get_active();
-	// scan_combined();
 	initialize_list();
 }
 
@@ -461,6 +461,10 @@ int main(int argc, char* argv[])
 	kapp.XDG_ENV = std::getenv("XDG_CURRENT_DESKTOP");
 	if (kapp.XDG_ENV == NULL)
 		kapp.XDG_ENV = const_cast<char*>("none");
+
+	auto dh = test_runtime_folders();
+	if (dh.has_value())
+		kapp.data_home = dh.value();
 	
 	//kapp.eui.filepath = "/usr/share/applications/btop.desktop";
 	kapp.app->signal_activate().connect(sigc::ptr_fun(init_ui));
