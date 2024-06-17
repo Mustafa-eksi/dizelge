@@ -19,7 +19,9 @@
 #include "Common.cpp"
 #include "EntryUi.cpp"
 #include "WebApp.cpp"
+#include "gtkmm/checkbutton.h"
 #include "gtkmm/stringobject.h"
+#include "sigc++/functors/ptr_fun.h"
 
 const std::string EXECUTABLE_NAME = "dizelge";
 const std::string NEW_SHORTCUT_CAT = "MyShortcuts";
@@ -46,6 +48,7 @@ struct KisayolApp {
 
 	// TODO: move these to somewhere.
 	Gtk::Button *add_new_button, *add_wap_button, *delete_button;
+	Gtk::CheckButton *catview_check;
 	Gtk::Entry *etxt;
 	Gtk::DropDown *folder_dd;
 
@@ -71,7 +74,7 @@ struct KisayolApp kapp = { 0 };
 using namespace std::placeholders; // This is to avoid writing "std::placeholders::_1" which makes code harder to read.
 
 // TODO: Put these into settings.
-const bool is_catview = true;
+bool is_catview = false;
 
 bool scan_file(KisayolApp *kapp, std::string path) {
 	auto pde = deskentry::parse_file(path, kapp->XDG_ENV);
@@ -352,14 +355,14 @@ void delete_button_clicked(void) {
 	erase_current(to_erase);
 }
 
-void search_entry_changed(bool is_category) {
+void search_entry_changed() {
 	std::string filter_text = kapp.etxt->get_text();
 	if (filter_text.empty()) {
 		initialize_list();
 		return;
 	}
 	kapp.lui.sl.reset();
-	if (is_category) {
+	if (is_catview) {
 		std::map<std::string, bool> ce;
 		for (size_t i = 0; i < kapp.list.size(); i++) {
 			if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"])) {
@@ -394,6 +397,12 @@ void search_entry_changed(bool is_category) {
 	}
 }
 
+void catview_toggled() {
+	is_catview = kapp.catview_check->get_active();
+	// scan_combined();
+	initialize_list();
+}
+
 void init_ui() {
 	kapp.main_window = kapp.builder->get_widget<Gtk::Window>("main_window");
 	kapp.main_window->set_application(kapp.app);
@@ -402,7 +411,7 @@ void init_ui() {
 	entry_ui(&kapp.eui, kapp.builder);
 	
 	kapp.etxt = kapp.builder->get_widget<Gtk::Entry>("etxt");
-	kapp.etxt->signal_changed().connect(std::bind(search_entry_changed, is_catview));
+	kapp.etxt->signal_changed().connect(sigc::ptr_fun(search_entry_changed));
 
 	scan_combined();
 	initialize_list();
@@ -430,6 +439,9 @@ void init_ui() {
 
 	kapp.delete_button = kapp.builder->get_widget<Gtk::Button>("delete_button");
 	kapp.delete_button->signal_clicked().connect(&delete_button_clicked);
+
+	kapp.catview_check = kapp.builder->get_widget<Gtk::CheckButton>("catview_check");
+	kapp.catview_check->signal_toggled().connect(sigc::ptr_fun(catview_toggled));
 
 	kapp.main_window->present();
 }

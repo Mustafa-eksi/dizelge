@@ -259,28 +259,38 @@ Window main_window {
       Box bottombar {
         valign: center;
         vexpand: true;
-        halign: end;
+        hexpand: true;
         margin-end: 12;
-        Button delete_button {
-          margin-end: 8;
-          styles [
-            "destructive-action",
-          ]
-          label: "Delete";
+        Box bottomleft {
+          halign: start;
+          CheckButton catview_check {
+            label: "Category View";
+          }
         }
-        Button open_file_button {
-          margin-end: 8;
-          icon-name: "search-folder-symbolic";
-          label: "Open file";
-        }
+        Box bottomright {
+          halign: end;
+          hexpand: true;
+          Button delete_button {
+            margin-end: 8;
+            styles [
+              "destructive-action",
+            ]
+            label: "Delete";
+          }
+          Button open_file_button {
+            margin-end: 8;
+            icon-name: "search-folder-symbolic";
+            label: "Open file";
+          }
 
-        Button save_button {
-          styles [
-            "suggested-action",
-          ]
+          Button save_button {
+            styles [
+              "suggested-action",
+            ]
 
-          icon-name: "checkmark";
-          label: "Save";
+            icon-name: "checkmark";
+            label: "Save";
+          }
         }
       }
     }
