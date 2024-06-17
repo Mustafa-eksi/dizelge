@@ -1,6 +1,8 @@
 #pragma once
+#include "gtkmm/alertdialog.h"
 #include "gtkmm/button.h"
 #include "gtkmm/entry.h"
+#include "sigc++/connection.h"
 #include "sigc++/functors/ptr_fun.h"
 #include <gtkmm.h>
 #include <optional>
@@ -16,16 +18,22 @@ const std::string DATA_FOLDER = "/dizelge";
 const std::string PROFILES_FOLDER = "/dizelge/profiles";
 const std::string ICONS_FOLDER = "/dizelge/icons";
 const std::string PROFILE_TEMPLATE_FOLDER = "/home/mustafa/Programming/kisayol-duzenleyici/obsolete/profiles/webapp-deneme1";
+const std::string APPLICATIONS_FOLDER = "/.local/share/applications";
 
 struct WebAppUi {
     Gtk::Window *w;
-    Gtk::Button *add_button;
+    Gtk::Button *add_button, *get_favicon_button;
+    sigc::connection add_button_connection, get_favicon_button_connection;
     Gtk::Entry *url_entry, *name_entry;
     Gtk::Image *icon;
     Gtk::Stack *icon_stack;
     Gtk::Spinner *icon_spinner;
-    std::string name, icon_path, data_home;
+    std::string name, icon_path;
+    Glib::RefPtr<Gtk::AlertDialog> ad, unfilled;
 };
+
+// Variables that are same for every window.
+std::string data_home, applications_home;
 
 WebAppUi wai = {0};
 
@@ -45,19 +53,23 @@ std::optional<std::string> test_runtime_folders() {
     auto xdg_home = std::getenv("HOME");
     if (xdg_data_home == NULL) {
         if (xdg_home != NULL)
-            wai.data_home = (std::string) xdg_home + "/.local/share";
+            data_home = (std::string) xdg_home + "/.local/share";
         else
             return {};
     } else {
-        wai.data_home = (std::string) xdg_data_home;
+        data_home = (std::string) xdg_data_home;
     }
-    if (!check_or_create_dir(wai.data_home+DATA_FOLDER+"/"))
+    if (!check_or_create_dir(data_home+DATA_FOLDER+"/"))
         return {};
-    if (!check_or_create_dir(wai.data_home+PROFILES_FOLDER))
+    if (!check_or_create_dir(data_home+PROFILES_FOLDER))
         return {};
-    if (!check_or_create_dir(wai.data_home+ICONS_FOLDER))
+    if (!check_or_create_dir(data_home+ICONS_FOLDER))
         return {};
-    return wai.data_home;
+    if (xdg_home != NULL && access(((std::string)xdg_home+APPLICATIONS_FOLDER).c_str(), F_OK) != 0)
+        return {};
+    else
+        applications_home = (std::string)xdg_home+APPLICATIONS_FOLDER;
+    return data_home;
 }
 
 void download_favicon(std::string fv, std::string output="/tmp/wap-favicon", WebAppUi *wai=NULL) {
@@ -77,30 +89,37 @@ void download_favicon(std::string fv, std::string output="/tmp/wap-favicon", Web
     wai->icon_stack->set_visible_child(*wai->icon);
 }
 
-void url_changed() {
+std::optional<std::string> parse_url() {
     auto url = wai.url_entry->get_text();
 
     size_t after_protocol = url.find_first_of("//");
-    if (after_protocol == std::string::npos)
-        return;
-
-    size_t domain_end = url.substr(after_protocol+2).find_first_of("/") + after_protocol+2;
-    std::string only_domain = domain_end != std::string::npos ? url.substr(0, domain_end) : url;
-    auto favicon = only_domain + "/favicon.ico";
-    // printf("favicon: '%s'\n", favicon.c_str());
-
+    if (after_protocol == std::string::npos || after_protocol+3 > url.size())
+        return {};
+    auto domain_end_pos = url.substr(after_protocol+2).find_first_of("/");
+    std::string only_domain = domain_end_pos != std::string::npos ? url.substr(0, domain_end_pos + after_protocol+2) : url;
+    // Check if domain is valid
+    if (only_domain.find_first_of(".") == std::string::npos)
+        return {};
     wai.name = only_domain.substr(after_protocol+2);
-    wai.icon_path = wai.data_home + ICONS_FOLDER +"/"+ only_domain.substr(after_protocol+2);
+    wai.icon_path = data_home + ICONS_FOLDER +"/"+ only_domain.substr(after_protocol+2);
+    return only_domain;
+}
 
+void get_favicon() {
+    auto parsed = parse_url();
+    if (!parsed.has_value())
+        return;
+    auto favicon = parsed.value() + "/favicon.ico";
+    // printf("favicon: '%s'\n", favicon.c_str());
     auto t = std::thread(download_favicon, favicon, wai.icon_path, &wai);
     t.detach();
 }
 
 std::optional<std::string> generate_profile(std::string name) {
-    std::string full_path = wai.data_home+PROFILES_FOLDER+"/"+name;
-    if (!check_or_create_dir(wai.data_home+PROFILES_FOLDER+"/"+name))
+    std::string full_path = data_home+PROFILES_FOLDER+"/"+name;
+    if (!check_or_create_dir(data_home+PROFILES_FOLDER+"/"+name))
         return {};
-    if (!check_or_create_dir(wai.data_home+PROFILES_FOLDER+"/"+name+"/chrome"))
+    if (!check_or_create_dir(data_home+PROFILES_FOLDER+"/"+name+"/chrome"))
         return {};
 
     std::ifstream user_js_template(PROFILE_TEMPLATE_FOLDER+"/user.js");
@@ -114,25 +133,56 @@ std::optional<std::string> generate_profile(std::string name) {
     return full_path;
 }
 
+void wap_added(std::shared_ptr<Gio::AsyncResult>& res) {
+    wai.ad->choose_finish(res);
+    wai.w->close();
+}
+
+void ok_buddy(std::shared_ptr<Gio::AsyncResult>& res) {
+    wai.ad->choose_finish(res);
+}
+
 void add_wap() {
+    if (wai.name_entry->get_text().empty() || wai.url_entry->get_text().empty()) {
+        wai.unfilled->choose(*wai.w, sigc::ptr_fun(&ok_buddy));
+        return;
+    }
+    if (wai.icon_path.empty())
+        get_favicon();
+
     deskentry::UnparsedEntry pe;
     pe["Desktop Entry"]["Type"] = "Application";
     pe["Desktop Entry"]["Icon"] = wai.icon_path;
-    pe["Desktop Entry"]["Name"] = wai.name_entry->get_text().empty() ? wai.name : (std::string) wai.name_entry->get_text();
+    pe["Desktop Entry"]["Categories"] = "WebApps";
+    pe["Desktop Entry"]["Name"] = wai.name_entry->get_text();
     auto new_prof = generate_profile(wai.name);
     pe["Desktop Entry"]["Exec"] = "firefox "+ wai.url_entry->get_text() +" --name deneme --profile " + (new_prof.has_value() ? new_prof.value() : PROFILE_TEMPLATE_FOLDER);
-    deskentry::write_to_file(pe, "/home/mustafa/Desktop/"+pe["Desktop Entry"]["Name"]+".desktop", true);
+    if (applications_home.empty()) {
+        // TODO: open a file dialog here
+        if (std::getenv("HOME") == NULL)
+            return;
+        applications_home = (std::string)std::getenv("HOME") + "/Desktop";
+    }
+    deskentry::write_to_file(pe, applications_home+"/"+pe["Desktop Entry"]["Name"]+".desktop", true);
+    wai.ad->choose(*wai.w, sigc::ptr_fun(&wap_added));
 }
 
-void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string data_home) {
-    if (data_home.empty()) {
+void close_wap() {
+    wai.get_favicon_button_connection.disconnect();
+    wai.add_button_connection.disconnect();
+
+    wai = {0};
+}
+
+void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string datah) {
+    if (datah.empty()) {
         auto dh = test_runtime_folders();
         if (dh.has_value())
-            wai.data_home = dh.value();
+            data_home = dh.value();
         else
             printf("ERROR: Web app window failed to access needed folders.");
     } else {
-        wai.data_home = data_home;
+        data_home = datah;
     }
     wai.w = b->get_widget<Gtk::Window>("new_desktop_window");
     wai.add_button = b->get_widget<Gtk::Button>("wai_add_button");
@@ -141,8 +191,21 @@ void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string data_home) {
     wai.icon_stack = b->get_widget<Gtk::Stack>("icon_stack");
     wai.icon_spinner = b->get_widget<Gtk::Spinner>("wai_spinner");
     wai.name_entry = b->get_widget<Gtk::Entry>("wai_name_entry");
+    wai.get_favicon_button = b->get_widget<Gtk::Button>("get_favicon_button");
 
-    wai.url_entry->signal_changed().connect(sigc::ptr_fun(url_changed));
-    wai.add_button->signal_clicked().connect(sigc::ptr_fun(add_wap));
+    wai.url_entry->set_text("");
+    wai.icon->clear();
+    wai.name_entry->set_text("");
+
+    wai.unfilled = Gtk::AlertDialog::create("Every field needs to be filled!");
+    wai.unfilled->set_buttons({"Ok"});
+    wai.unfilled->set_default_button(0);
+
+    wai.ad = Gtk::AlertDialog::create("Web app created successfully!");
+    wai.ad->set_buttons({"Ok"});
+    wai.ad->set_default_button(0);
+
+    wai.add_button_connection = wai.add_button->signal_clicked().connect(sigc::ptr_fun(add_wap));
+    wai.get_favicon_button_connection = wai.get_favicon_button->signal_clicked().connect(sigc::ptr_fun(get_favicon));
 }
 

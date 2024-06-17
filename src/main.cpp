@@ -279,6 +279,7 @@ void folder_dd_select() {
 
 bool new_window_close() {
 	kapp.new_window->unset_application();
+	close_wap();
 	return false;
 }
 
@@ -454,6 +455,10 @@ int main(int argc, char* argv[])
 	
 	kapp.app = Gtk::Application::create("org.mustafa.dizelge");
 	// FIXME: this assumes dizelge.ui and executable are in the same directory.
+	auto dh = test_runtime_folders();
+	if (dh.has_value())
+		kapp.data_home = dh.value();
+
 	kapp.builder = Gtk::Builder::create_from_file(abs_path + "dizelge.ui");
 	if(!kapp.builder)
 		return 1;
@@ -462,9 +467,6 @@ int main(int argc, char* argv[])
 	if (kapp.XDG_ENV == NULL)
 		kapp.XDG_ENV = const_cast<char*>("none");
 
-	auto dh = test_runtime_folders();
-	if (dh.has_value())
-		kapp.data_home = dh.value();
 	
 	//kapp.eui.filepath = "/usr/share/applications/btop.desktop";
 	kapp.app->signal_activate().connect(sigc::ptr_fun(init_ui));
