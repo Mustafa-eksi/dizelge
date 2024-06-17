@@ -60,7 +60,7 @@ std::optional<std::string> test_runtime_folders() {
         return {};
     if (!check_or_create_dir(data_home+ICONS_FOLDER))
         return {};
-    if (xdg_home != NULL && access(((std::string)xdg_home+APPLICATIONS_FOLDER).c_str(), F_OK) != 0)
+    if (xdg_home != NULL && !check_or_create_dir((std::string)xdg_home+APPLICATIONS_FOLDER))
         return {};
     else
         applications_home = (std::string)xdg_home+APPLICATIONS_FOLDER;
