@@ -1,9 +1,4 @@
 #pragma once
-#include "gtkmm/alertdialog.h"
-#include "gtkmm/button.h"
-#include "gtkmm/entry.h"
-#include "sigc++/connection.h"
-#include "sigc++/functors/ptr_fun.h"
 #include <gtkmm.h>
 #include <optional>
 #include <thread>
@@ -29,7 +24,7 @@ struct WebAppUi {
     Gtk::Stack *icon_stack;
     Gtk::Spinner *icon_spinner;
     std::string name, icon_path;
-    Glib::RefPtr<Gtk::AlertDialog> ad, unfilled;
+    GtkWidget *ad, *unfilled;
 };
 
 // Variables that are same for every window.
@@ -133,18 +128,22 @@ std::optional<std::string> generate_profile(std::string name) {
     return full_path;
 }
 
-void wap_added(std::shared_ptr<Gio::AsyncResult>& res) {
-    wai.ad->choose_finish(res);
+void wap_added(GtkDialog* self, gint response_id, gpointer user_data) {
+    // wai.ad->choose_finish(res);
+    gtk_window_close(GTK_WINDOW(wai.ad));
     wai.w->close();
 }
 
-void ok_buddy(std::shared_ptr<Gio::AsyncResult>& res) {
-    wai.ad->choose_finish(res);
+void ok_buddy(GtkDialog* self, gint response_id, gpointer user_data) {
+    // wai.ad->choose_finish(res);
+    gtk_window_close(GTK_WINDOW(wai.unfilled));
 }
 
 void add_wap() {
     if (wai.name_entry->get_text().empty() || wai.url_entry->get_text().empty()) {
-        wai.unfilled->choose(*wai.w, sigc::ptr_fun(&ok_buddy));
+        wai.unfilled = gtk_message_dialog_new(wai.w->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "Every field needs to be filled!");
+        g_signal_connect(wai.unfilled, "response", G_CALLBACK(ok_buddy), NULL);
+        gtk_window_present(GTK_WINDOW(wai.unfilled));
         return;
     }
     if (wai.icon_path.empty())
@@ -164,7 +163,9 @@ void add_wap() {
         applications_home = (std::string)std::getenv("HOME") + "/Desktop";
     }
     deskentry::write_to_file(pe, applications_home+"/"+pe["Desktop Entry"]["Name"]+".desktop", true);
-    wai.ad->choose(*wai.w, sigc::ptr_fun(&wap_added));
+    wai.ad = gtk_message_dialog_new(wai.w->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "Web app created successfully!");
+    g_signal_connect(wai.ad, "response", G_CALLBACK(wap_added), NULL);
+    gtk_window_present(GTK_WINDOW(wai.ad));
 }
 
 void close_wap() {
@@ -196,14 +197,6 @@ void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string datah) {
     wai.url_entry->set_text("");
     wai.icon->clear();
     wai.name_entry->set_text("");
-
-    wai.unfilled = Gtk::AlertDialog::create("Every field needs to be filled!");
-    wai.unfilled->set_buttons({"Ok"});
-    wai.unfilled->set_default_button(0);
-
-    wai.ad = Gtk::AlertDialog::create("Web app created successfully!");
-    wai.ad->set_buttons({"Ok"});
-    wai.ad->set_default_button(0);
 
     wai.add_button_connection = wai.add_button->signal_clicked().connect(sigc::ptr_fun(add_wap));
     wai.get_favicon_button_connection = wai.get_favicon_button->signal_clicked().connect(sigc::ptr_fun(get_favicon));

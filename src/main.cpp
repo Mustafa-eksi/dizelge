@@ -20,9 +20,6 @@
 #include "Common.cpp"
 #include "EntryUi.cpp"
 #include "WebApp.cpp"
-#include "gtkmm/checkbutton.h"
-#include "gtkmm/stringobject.h"
-#include "sigc++/functors/ptr_fun.h"
 
 const std::string EXECUTABLE_NAME = "dizelge";
 const std::string NEW_SHORTCUT_CAT = "MyShortcuts";
@@ -52,7 +49,7 @@ struct KisayolApp {
 	Gtk::Entry *etxt;
 	Gtk::DropDown *folder_dd;
 
-	Glib::RefPtr<Gtk::AlertDialog> ad;
+	GtkWidget *ad;
 	
 	std::mutex list_mutex;
 	EntryList list;
@@ -298,7 +295,7 @@ void add_new_button_clicked(void) {
 	recalculate_catlist();
 	initialize_list(NEW_SHORTCUT_CAT);
 
-	kapp.lui.listem->scroll_to(0, Gtk::ListScrollFlags::SELECT);
+	//kapp.lui.listem->scroll_to(0, Gtk::ListScrollFlags::SELECT);
 	set_from_desktop_entry(&kapp.eui, &kapp.list.front());
 }
 
@@ -321,31 +318,33 @@ void erase_current(size_t to_erase) {
 	initialize_list();
 }
 
-void delete_confirm(std::shared_ptr<Gio::AsyncResult>& res, deskentry::DesktopEntry *de) {
-	auto result = kapp.ad->choose_finish(res);
-	if (result == 0) return;
-	if (access(de->path.c_str(), W_OK) != 0) {
-		system(("pkexec bash -c \"rm "+de->path+"\"").c_str());
+void delete_confirm(GtkDialog* self, gint response_id, gpointer user_data) {
+	std::string depath = *(std::string*)user_data;
+	printf("id: %d\n", response_id);
+	if (response_id != -5) {
+		gtk_window_close(GTK_WINDOW(kapp.ad));
+		return;
+	}
+	if (access(depath.c_str(), W_OK) != 0) {
+		system(("pkexec bash -c \"rm "+depath+"\"").c_str());
 	} else {
-		unlink(de->path.c_str());
+		unlink(depath.c_str());
 	}
 	size_t i = 0;
 	for (auto& b : kapp.list) {
-		if (b.path == de->path)
+		if (b.path == depath)
 			erase_current(i);
 		i++;
 	}
+	gtk_window_close(GTK_WINDOW(kapp.ad));
 }
 
 void delete_button_clicked(void) {
 	size_t to_erase = 0;
 	if (!kapp.eui.de->path.empty()) {
-		kapp.ad.reset();
-		kapp.ad = Gtk::AlertDialog::create("Are you sure to remove '"+kapp.eui.de->path+"'?");
-		kapp.ad->set_buttons({"Cancel", "Confirm"});
-		kapp.ad->set_cancel_button(0);
-		kapp.ad->set_default_button(0);
-		kapp.ad->choose(*kapp.main_window, sigc::bind(&delete_confirm, kapp.eui.de));
+		kapp.ad = gtk_message_dialog_new(kapp.main_window->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_QUESTION, GTK_BUTTONS_OK_CANCEL, "Are you sure to delete %s", kapp.eui.de->path.c_str());
+		g_signal_connect(kapp.ad, "response", G_CALLBACK(delete_confirm), &kapp.eui.de->path);
+		gtk_window_present(GTK_WINDOW(kapp.ad));
 		return;
 	}
 	if (is_catview) {
@@ -401,6 +400,8 @@ void search_entry_changed() {
 
 void catview_toggled() {
 	is_catview = kapp.catview_check->get_active();
+	if (is_catview)
+		recalculate_catlist();
 	initialize_list();
 }
 
@@ -409,7 +410,7 @@ void init_ui() {
 	kapp.main_window->set_application(kapp.app);
 	
 	// Initialize "sidepanel"
-	entry_ui(&kapp.eui, kapp.builder);
+	entry_ui(&kapp.eui, kapp.builder, kapp.main_window->gobj());
 	
 	kapp.etxt = kapp.builder->get_widget<Gtk::Entry>("etxt");
 	kapp.etxt->signal_changed().connect(sigc::ptr_fun(search_entry_changed));

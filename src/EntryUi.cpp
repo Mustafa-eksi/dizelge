@@ -2,11 +2,7 @@
 #include <gtkmm.h>
 #include "desktop.cpp"
 #include "Common.cpp"
-#include "giomm/cancellable.h"
-#include "giomm/liststore.h"
-#include "glibmm/refptr.h"
-#include "gtkmm/filefilter.h"
-#include "sigc++/functors/ptr_fun.h"
+#include "gtkmm/filechooserdialog.h"
 
 /*
  * This file contains only stuff in right panel (where the entry information is displayed).
@@ -21,7 +17,7 @@ typedef struct {
 	Gtk::DropDown *type_drop;
 	Gtk::Image *icon;
 	Gtk::Button *open_file_button, *save_button, *choose_image;
-	Glib::RefPtr<Gtk::FileDialog> fd, save_button_dialog;
+	GtkWidget *fd, *save_button_dialog;
 } EntryUi;
 
 const std::vector<Glib::ustring> TypeLookup = {"Application", "Link", "Directory"};
@@ -58,18 +54,19 @@ void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
 }
 
 void save_button_callback(std::shared_ptr<Gio::AsyncResult>& res, EntryUi *eui) {
-	auto folder = eui->save_button_dialog->save_finish(res);
-	auto folderpath = folder->get_path();
+	// auto folder = eui->save_button_dialog->save_finish(res);
+	/*auto folderpath = folder->get_path();
 	if (folderpath.empty()) return;
 	eui->de->path = folderpath;
-	deskentry::write_to_file(eui->de->pe, eui->de->path, true);
+	deskentry::write_to_file(eui->de->pe, eui->de->path, true);*/
 }
 
 void save_button_clicked(EntryUi *eui) {
 	sync_pe(eui, eui->de);
 	auto de = eui->de;
 	if (de->path.empty()) {
-		eui->save_button_dialog->save(sigc::bind(&save_button_callback, eui));
+		gtk_window_present(GTK_WINDOW(eui->save_button_dialog));
+		// eui->save_button_dialog.present(); //(sigc::bind(&save_button_callback, eui));
 		return;
 	}
 	deskentry::write_to_file(de->pe, de->path);
@@ -105,19 +102,21 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry *de) {
 }
 
 void async_callback(std::shared_ptr<Gio::AsyncResult>& res, EntryUi *eui) {
-	auto file = eui->fd->open_finish(res);
-	auto filepath = file->get_path();
-	printf("filepath: %s\n", filepath.c_str());
+	auto file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(eui->fd));
+	auto filepath = g_file_get_path(file);
+	printf("filepath: %s\n", filepath);
 	eui->de->pe["Desktop Entry"]["Icon"] = filepath;
 	set_icon(eui->icon, filepath);
 	eui->iconname_entry->set_text(de_val(eui->de, "Icon"));
 }
 
 void choose_image_clicked(EntryUi *eui) {
-	eui->fd->open(sigc::bind(&async_callback, eui), nullptr);
+	gtk_window_present(GTK_WINDOW(eui->fd));
+	//eui->fd.present(); // (sigc::bind(&async_callback, eui), nullptr);
+	printf("hello world\n");
 }
 
-void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder) {
+void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder, GtkWindow *window) {
 	eui->terminal_check 	= builder->get_widget<Gtk::CheckButton>("terminal_check");
 	eui->single_main_window = builder->get_widget<Gtk::CheckButton>("single_main_window");
 	eui->dgpu_check 		= builder->get_widget<Gtk::CheckButton>("dgpu_check");
@@ -133,16 +132,15 @@ void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder) {
 	eui->path_entry 		= builder->get_widget<Gtk::Entry>("path_entry");
 	eui->iconname_entry 	= builder->get_widget<Gtk::Entry>("iconname_entry");
 	eui->icon 				= builder->get_widget<Gtk::Image>("app_icon");
-	eui->fd = Gtk::FileDialog::create();
-	// What happened to gls1???
-	auto gls2 = Gio::ListStore<Gtk::FileFilter>::create();
+
+	eui->fd = gtk_file_chooser_dialog_new("Select image file", window, GTK_FILE_CHOOSER_ACTION_OPEN, "Select", NULL);
+	eui->save_button_dialog = gtk_file_chooser_dialog_new("Save desktop entry", window, GTK_FILE_CHOOSER_ACTION_SAVE, "Save", NULL);
+
 	auto filter = Gtk::FileFilter::create();
 	filter->add_pattern("*.png *.svg *.jpg *.jpeg *.gif");
 	filter->set_name("Image Formats");
-	gls2->append(filter);
-	eui->fd->set_filters(gls2);
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(eui->fd), filter->gobj());
 
-	eui->save_button_dialog = Gtk::FileDialog::create();
 	eui->save_button->signal_clicked().connect(std::bind(save_button_clicked, eui));
 	eui->open_file_button->signal_clicked().connect(sigc::bind(&open_file_clicked, eui));
 	eui->choose_image->signal_clicked().connect(sigc::bind(&choose_image_clicked, eui));

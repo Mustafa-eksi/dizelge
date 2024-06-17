@@ -40,7 +40,7 @@ void categorylist_bind(const Glib::RefPtr<Gtk::ListItem>& list_item,
 	auto attrs = Pango::AttrList::from_string("0 -1 font \"Sans 12\"");
 	auto label = dynamic_cast<Gtk::Label*>(lb->get_label_widget());
 	label->set_attributes(attrs);
-	auto gsl = Gtk::StringList::create();
+	auto gsl = Gtk::StringList::create({});
 	for (auto const& [name, ind] : catview->catlist[strobj])
 		gsl->append(name);
 

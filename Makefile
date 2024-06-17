@@ -9,7 +9,7 @@ ui: main.blp
 	blueprint-compiler compile main.blp --output dizelge.ui
 
 main: src/*
-	clang++ src/main.cpp -o dizelge $(CFLAGS) $(LIBS)
+	g++ src/main.cpp -o dizelge $(CFLAGS) $(LIBS)
 
 install: dizelge dizelge.ui
 	install dizelge $(DESTDIR)$(prefix)/bin
