@@ -459,7 +459,7 @@ int main(int argc, char* argv[])
 	if (dh.has_value())
 		kapp.data_home = dh.value();
 
-	kapp.builder = Gtk::Builder::create_from_file(abs_path + "dizelge.ui");
+	kapp.builder = Gtk::Builder::create_from_file("/usr/share/dizelge/dizelge.ui");
 	if(!kapp.builder)
 		return 1;
 
@@ -467,8 +467,6 @@ int main(int argc, char* argv[])
 	if (kapp.XDG_ENV == NULL)
 		kapp.XDG_ENV = const_cast<char*>("none");
 
-	
-	//kapp.eui.filepath = "/usr/share/applications/btop.desktop";
 	kapp.app->signal_activate().connect(sigc::ptr_fun(init_ui));
 
 	return kapp.app->run(argc, argv);

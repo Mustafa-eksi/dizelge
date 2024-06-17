@@ -17,7 +17,7 @@
 const std::string DATA_FOLDER = "/dizelge";
 const std::string PROFILES_FOLDER = "/dizelge/profiles";
 const std::string ICONS_FOLDER = "/dizelge/icons";
-const std::string PROFILE_TEMPLATE_FOLDER = "/home/mustafa/Programming/kisayol-duzenleyici/obsolete/profiles/webapp-deneme1";
+const std::string PROFILE_TEMPLATE_FOLDER = "/usr/share/dizelge/profile_template";
 const std::string APPLICATIONS_FOLDER = "/.local/share/applications";
 
 struct WebAppUi {
