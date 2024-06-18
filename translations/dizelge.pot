@@ -1,0 +1,184 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-06-18 18:56+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: main.blp:92
+msgid "Icon name:"
+msgstr ""
+
+#: main.blp:102
+msgid "Choose image"
+msgstr ""
+
+#: main.blp:122 main.blp:325
+msgid "Name:"
+msgstr ""
+
+#: main.blp:136
+msgid "Exec:"
+msgstr ""
+
+#: main.blp:148
+msgid "Basic"
+msgstr ""
+
+#: main.blp:167
+msgid "Type:"
+msgstr ""
+
+#: main.blp:180
+msgid "Generic Name:"
+msgstr ""
+
+#: main.blp:195
+msgid "Comment:"
+msgstr ""
+
+#: main.blp:210
+msgid "Categories:"
+msgstr ""
+
+#: main.blp:225
+msgid "Working Directory:"
+msgstr ""
+
+#: main.blp:235
+msgid "Run in terminal"
+msgstr ""
+
+#: main.blp:239
+msgid "Prefers discrete GPU"
+msgstr ""
+
+#: main.blp:241
+msgid ""
+"If true, the application prefers to be run on a more powerful discrete GPU "
+"if available."
+msgstr ""
+
+#: main.blp:245
+msgid "Single Main Window"
+msgstr ""
+
+#: main.blp:247
+msgid ""
+"If true, the application has a single main window, and does not support "
+"having an additional one opened."
+msgstr ""
+
+#: main.blp:253
+msgid "Advanced"
+msgstr ""
+
+#: main.blp:265
+msgid "Category View"
+msgstr ""
+
+#: main.blp:281
+msgid "Open file"
+msgstr ""
+
+#: main.blp:311
+msgid "Get favicon"
+msgstr ""
+
+#: main.blp:338
+msgid "Url:"
+msgstr ""
+
+#: main.blp:346
+msgid "Add Web App"
+msgstr ""
+
+#: src/main.cpp:128
+#, c-format
+msgid "ERROR %s: %s\n"
+msgstr ""
+
+#: src/main.cpp:139
+msgid "Combined"
+msgstr ""
+
+#: src/main.cpp:298
+msgid "Enter your shortcut's name here"
+msgstr ""
+
+#: src/main.cpp:364
+#, c-format
+msgid "Are you sure to delete %s"
+msgstr ""
+
+#: src/main.cpp:451
+#, c-format
+msgid "Can't parse desktop entry: %s\n"
+msgstr ""
+
+#: src/WebApp.cpp:41
+#, c-format
+msgid "ERROR: Couldn't access %s, manual intervention needed.\n"
+msgstr ""
+
+#: src/WebApp.cpp:147
+msgid "Every field needs to be filled!"
+msgstr ""
+
+#: src/WebApp.cpp:169
+msgid "Web app created successfully!"
+msgstr ""
+
+#: src/WebApp.cpp:190
+#, c-format
+msgid "ERROR: Web app window failed to access needed folders."
+msgstr ""
+
+#: src/EntryUi.cpp:25
+msgid "Application"
+msgstr ""
+
+#: src/EntryUi.cpp:25
+msgid "Link"
+msgstr ""
+
+#: src/EntryUi.cpp:25
+msgid "Directory"
+msgstr ""
+
+#: src/EntryUi.cpp:71
+msgid "Save desktop entry"
+msgstr ""
+
+#: src/EntryUi.cpp:71
+msgid "Save"
+msgstr ""
+
+#: src/EntryUi.cpp:120
+msgid "Select image file"
+msgstr ""
+
+#: src/EntryUi.cpp:120
+msgid "Select"
+msgstr ""
+
+#: src/EntryUi.cpp:145
+msgid "Image Formats"
+msgstr ""
+
+#: src/desktop.cpp:296
+#, c-format
+msgid "UNKNOWN ERROR: Can't open file stream. File path: %s\n"
+msgstr ""

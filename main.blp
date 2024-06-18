@@ -32,7 +32,7 @@ Window main_window {
           spacing: 10;
 
           Entry etxt {
-            placeholder-text: 'isim yaz';
+            placeholder-text: _('search something');
             hexpand: true;
           }
 
@@ -89,7 +89,7 @@ Window main_window {
 
                 Label {
                   margin-end: 12;
-                  label: "Icon name:";
+                  label: _("Icon name:");
                 }
 
                 Entry iconname_entry {
@@ -99,7 +99,7 @@ Window main_window {
 
               Button select_file_for_icon {
                 vexpand: false;
-                label: "Choose image";
+                label: _("Choose image");
               }
             }
           }
@@ -119,11 +119,10 @@ Window main_window {
 
               Label {
                 margin-end: 12;
-                label: "Name:";
+                label: _("Name:");
               }
 
               Entry filename_entry {
-                placeholder-text: "file";
                 hexpand: true;
               }
             }
@@ -134,11 +133,10 @@ Window main_window {
 
               Label {
                 margin-end: 12;
-                label: "Exec:";
+                label: _("Exec:");
               }
 
               Entry exec_entry {
-                placeholder-text: "exec";
                 hexpand: true;
               }
             }
@@ -147,7 +145,7 @@ Window main_window {
 
         [tab]
         Label {
-          label: "Basic";
+          label: _("Basic");
         }
 
         Box NotSoImportant {
@@ -166,7 +164,7 @@ Window main_window {
 
             Label {
               margin-end: 12;
-              label: "Type:";
+              label: _("Type:");
             }
 
             DropDown type_drop {
@@ -179,7 +177,7 @@ Window main_window {
 
             Label {
               margin-end: 12;
-              label: "Generic Name:";
+              label: _("Generic Name:");
             }
 
             Entry generic_name_entry {
@@ -194,7 +192,7 @@ Window main_window {
 
             Label {
               margin-end: 12;
-              label: "Comment:";
+              label: _("Comment:");
             }
 
             Entry comment_entry {
@@ -209,7 +207,7 @@ Window main_window {
 
             Label {
               margin-end: 12;
-              label: "Categories:";
+              label: _("Categories:");
             }
 
             Entry categories_entry {
@@ -224,7 +222,7 @@ Window main_window {
 
             Label {
               margin-end: 12;
-              label: "Working Directory:";
+              label: _("Working Directory:");
             }
 
             Entry path_entry {
@@ -234,25 +232,25 @@ Window main_window {
           }
 
           CheckButton terminal_check {
-            label: "Run in terminal";
+            label: _("Run in terminal");
           }
 
           CheckButton dgpu_check {
-            label: "Prefers discrete GPU";
+            label: _("Prefers discrete GPU");
             has-tooltip: true;
-            tooltip-text: "If true, the application prefers to be run on a more powerful discrete GPU if available.";
+            tooltip-text: _("If true, the application prefers to be run on a more powerful discrete GPU if available.");
           }
 
           CheckButton single_main_window {
-            label: "Single Main Window";
+            label: _("Single Main Window");
             has-tooltip: true;
-            tooltip-text: "If true, the application has a single main window, and does not support having an additional one opened.";
+            tooltip-text: _("If true, the application has a single main window, and does not support having an additional one opened.");
           }
         }
 
         [tab]
         Label {
-          label: "Advanced";
+          label: _("Advanced");
         }
       }
 
@@ -264,7 +262,7 @@ Window main_window {
         Box bottomleft {
           halign: start;
           CheckButton catview_check {
-            label: "Category View";
+            label: _("Category View");
           }
         }
         Box bottomright {
@@ -280,7 +278,7 @@ Window main_window {
           Button open_file_button {
             margin-end: 8;
             icon-name: "search-folder-symbolic";
-            label: "Open file";
+            label: _("Open file");
           }
 
           Button save_button {
@@ -310,7 +308,7 @@ Window new_desktop_window {
     orientation: vertical;
     Stack icon_stack {
       Button get_favicon_button {
-        label: "Get favicon";
+        label: _("Get favicon");
       }
       Image wai_icon {
       }
@@ -324,7 +322,7 @@ Window new_desktop_window {
 
       Label {
         margin-end: 12;
-        label: "Name:";
+        label: _("Name:");
       }
 
       Entry wai_name_entry {
@@ -337,7 +335,7 @@ Window new_desktop_window {
 
       Label {
         margin-end: 12;
-        label: "Url:";
+        label: _("Url:");
       }
 
       Entry wai_url_entry {
@@ -345,7 +343,7 @@ Window new_desktop_window {
       }
     }
     Button wai_add_button {
-      label: "Add Web App";
+      label: _("Add Web App");
     }
   }
 }

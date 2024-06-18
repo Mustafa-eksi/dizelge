@@ -9,6 +9,8 @@
 #include <vector>
 #include <unistd.h>
 
+#include "GettextMacros.h"
+
 /*
  * This is the library I use to parse and use desktop entry files.
  * This file doesn't have any ui stuff and can be used seperately.
@@ -291,7 +293,8 @@ void write_to_file(UnparsedEntry pe, std::string out_path, bool is_new=false) {
         }
         std::ofstream OutStream(out_path);
         if (!OutStream) {
-                printf("UNKNOWN ERROR: Can't open file stream. File path: %s\n", out_path.c_str());
+                printf(_("UNKNOWN ERROR: Can't open file stream. File path: %s\n"), out_path.c_str());
+                return;
         }
         OutStream << output_file;
         OutStream.close();

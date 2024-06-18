@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 
+#include "GettextMacros.h"
 #include "desktop.cpp"
 #include "CategoryList.cpp"
 #include "Common.cpp"
@@ -124,7 +125,7 @@ bool scan_folder(std::string folder_path) {
 			//scan_file(&kapp, entry.path());
 			threads.push_back(std::thread(scan_file, &kapp, entry.path()));
 		} catch (std::exception& e) {
-			printf("!!ERROR!! %s: %s\n", entry.path().c_str(), e.what());
+			printf(_("ERROR %s: %s\n"), entry.path().c_str(), e.what());
 			return false;
 		}
 	}
@@ -135,9 +136,10 @@ bool scan_folder(std::string folder_path) {
 }
 
 void scan_combined() {
-	kapp.scanned_folders.push_back("Combined");
+	kapp.scanned_folders.push_back(_("Combined"));
 	std::string datadirs = std::getenv("XDG_DATA_DIRS");
-	if (!datadirs.empty()) {
+	// Disabled because, i think it is unuseful now:
+	/*if (!datadirs.empty()) {
 		std::string it = datadirs;
 		size_t pos = it.find(":");
 		while (pos != std::string::npos) {
@@ -150,7 +152,10 @@ void scan_combined() {
 		if (scan_folder(it+"/applications/")) {
 			kapp.scanned_folders.push_back(it+"/applications/");
 		}
-	}
+	}*/
+	scan_folder("/usr/share/applications/");
+	kapp.scanned_folders.push_back("/usr/share/applications/");
+
 	scan_folder("~/.local/share/applications/");
 	kapp.scanned_folders.push_back("~/.local/share/applications/");
 
@@ -290,7 +295,7 @@ void folder_dd_select() {
 
 void add_new_button_clicked(void) {
 	deskentry::UnparsedEntry ue;
-	ue["Desktop Entry"]["Name"] = "Enter your shortcut's name here";
+	ue["Desktop Entry"]["Name"] = _("Enter your shortcut's name here");
 	ue["Desktop Entry"]["Categories"] = NEW_SHORTCUT_CAT;
 	deskentry::DesktopEntry newentry = {
 		.pe = ue,
@@ -356,7 +361,7 @@ void delete_button_clicked(void) {
 	size_t to_erase = 0;
 	if (kapp.eui.de == NULL) return;
 	if (!kapp.eui.de->path.empty()) {
-		kapp.ad = gtk_message_dialog_new(kapp.main_window->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_QUESTION, GTK_BUTTONS_OK_CANCEL, "Are you sure to delete %s", kapp.eui.de->path.c_str());
+		kapp.ad = gtk_message_dialog_new(kapp.main_window->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_QUESTION, GTK_BUTTONS_OK_CANCEL, _("Are you sure to delete %s"), kapp.eui.de->path.c_str());
 		g_signal_connect(kapp.ad, "response", G_CALLBACK(delete_confirm), &kapp.eui.de->path);
 		gtk_window_present(GTK_WINDOW(kapp.ad));
 		return;
@@ -443,7 +448,7 @@ void init_ui() {
 	if (kapp.open_file_mode) {
 		auto mayfail = deskentry::parse_file(kapp.open_file_path, kapp.XDG_ENV);
 		if (!mayfail.has_value()) {
-			printf("Can't parse desktop entry: %s\n", kapp.open_file_path.c_str());
+			printf(_("Can't parse desktop entry: %s\n"), kapp.open_file_path.c_str());
 			return;
 		}
 		kapp.list.push_back(mayfail.value());
@@ -490,7 +495,7 @@ int main(int argc, char* argv[])
 		kapp.open_file_mode = true;
 	}
 
-	kapp.app = Gtk::Application::create("org.mustafa.dizelge");
+	kapp.app = Gtk::Application::create("me.mustafa.dizelge");
 	// FIXME: this assumes dizelge.ui and executable are in the same directory.
 	auto dh = test_runtime_folders();
 	if (dh.has_value())

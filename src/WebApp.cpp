@@ -4,6 +4,7 @@
 #include <thread>
 #include <fstream>
 #include "desktop.cpp"
+#include "GettextMacros.h"
 /*
  * This file contains only the window that opens when "new web app" button is pressed.
  */
@@ -37,7 +38,7 @@ bool check_or_create_dir(std::string path) {
         return false;
 
     if(access(path.c_str(), W_OK) != 0) {
-        printf("ERROR: Couldn't access %s, manual intervention needed.\n", path.c_str());
+        printf(_("ERROR: Couldn't access %s, manual intervention needed.\n"), path.c_str());
         return false;
     }
     return true;
@@ -75,7 +76,7 @@ void download_favicon(std::string fv, std::string output="/tmp/wap-favicon", Web
     system(("wget -q -O " + output + " " + fv).c_str());
 
     if (access(output.c_str(), F_OK) != 0)
-        wai->icon->set_from_icon_name("internet-services");
+        wai->icon->set_from_icon_name("emblem-web");
     else
         gtk_image_set_from_file(wai->icon->gobj(), output.c_str());
     wai->icon->set_icon_size(Gtk::IconSize::LARGE);
@@ -143,7 +144,7 @@ void ok_buddy(GtkDialog* self, gint response_id, gpointer user_data) {
 
 void add_wap() {
     if (wai.name_entry->get_text().empty() || wai.url_entry->get_text().empty()) {
-        wai.unfilled = gtk_message_dialog_new(wai.w->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "Every field needs to be filled!");
+        wai.unfilled = gtk_message_dialog_new(wai.w->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, _("Every field needs to be filled!"));
         g_signal_connect(wai.unfilled, "response", G_CALLBACK(ok_buddy), NULL);
         gtk_window_present(GTK_WINDOW(wai.unfilled));
         return;
@@ -157,7 +158,7 @@ void add_wap() {
     pe["Desktop Entry"]["Categories"] = "WebApps";
     pe["Desktop Entry"]["Name"] = wai.name_entry->get_text();
     auto new_prof = generate_profile(wai.name);
-    pe["Desktop Entry"]["Exec"] = "sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\""+wai.icon_path+"\" firefox "+ wai.url_entry->get_text() +" --name deneme --profile " + (new_prof.has_value() ? new_prof.value() : PROFILE_TEMPLATE_FOLDER) + "'";
+    pe["Desktop Entry"]["Exec"] = "sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\""+wai.icon_path+"\" firefox "+ wai.url_entry->get_text() +" --name "+wai.name+" --profile " + (new_prof.has_value() ? new_prof.value() : PROFILE_TEMPLATE_FOLDER) + "'";
     if (applications_home.empty()) {
         // TODO: open a file dialog here
         if (std::getenv("HOME") == NULL)
@@ -165,7 +166,7 @@ void add_wap() {
         applications_home = desktopd;
     }
     deskentry::write_to_file(pe, applications_home+"/"+pe["Desktop Entry"]["Name"]+".desktop", true);
-    wai.ad = gtk_message_dialog_new(wai.w->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "Web app created successfully!");
+    wai.ad = gtk_message_dialog_new(wai.w->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, _("Web app created successfully!"));
     g_signal_connect(wai.ad, "response", G_CALLBACK(wap_added), NULL);
     gtk_window_present(GTK_WINDOW(wai.ad));
 }
@@ -186,7 +187,7 @@ void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string datah, std::string desktop
         if (dh.has_value())
             data_home = dh.value();
         else
-            printf("ERROR: Web app window failed to access needed folders.");
+            printf(_("ERROR: Web app window failed to access needed folders."));
     } else {
         data_home = datah;
     }
