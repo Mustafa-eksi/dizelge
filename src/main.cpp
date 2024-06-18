@@ -64,6 +64,8 @@ struct KisayolApp {
 	size_t selected_folder;
 	char *XDG_ENV;
 	std::string data_home, desktop_dir;
+	bool open_file_mode;
+	std::string open_file_path;
 };
 
 // TODO: get rid of global variables
@@ -337,11 +339,15 @@ void delete_confirm(GtkDialog* self, gint response_id, gpointer user_data) {
 	} else {
 		unlink(depath.c_str());
 	}
-	size_t i = 0;
-	for (auto& b : kapp.list) {
-		if (b.path == depath)
-			erase_current(i);
-		i++;
+	if (!kapp.open_file_mode) {
+		size_t i = 0;
+		for (auto& b : kapp.list) {
+			if (b.path == depath)
+				erase_current(i);
+			i++;
+		}
+	} else {
+		kapp.main_window->close();
 	}
 	gtk_window_close(GTK_WINDOW(kapp.ad));
 }
@@ -355,6 +361,7 @@ void delete_button_clicked(void) {
 		gtk_window_present(GTK_WINDOW(kapp.ad));
 		return;
 	}
+	if (kapp.open_file_mode) return;
 	if (is_catview) {
 		if (!kapp.catview.models->contains(kapp.catview.previous_cat))
 			return;
@@ -423,6 +430,26 @@ void init_ui() {
 	
 	// Initialize "sidepanel"
 	entry_ui(&kapp.eui, kapp.builder, kapp.main_window->gobj());
+
+	kapp.delete_button = kapp.builder->get_widget<Gtk::Button>("delete_button");
+	kapp.delete_button->signal_clicked().connect(&delete_button_clicked);
+
+	kapp.catview_check = kapp.builder->get_widget<Gtk::CheckButton>("catview_check");
+	kapp.catview_check->set_visible(!kapp.open_file_mode);
+	kapp.catview_check->signal_toggled().connect(sigc::ptr_fun(catview_toggled));
+
+	kapp.builder->get_widget<Gtk::Box>("sidepanel")->set_visible(!kapp.open_file_mode);
+
+	if (kapp.open_file_mode) {
+		auto mayfail = deskentry::parse_file(kapp.open_file_path, kapp.XDG_ENV);
+		if (!mayfail.has_value()) {
+			printf("Can't parse desktop entry: %s\n", kapp.open_file_path.c_str());
+			return;
+		}
+		kapp.list.push_back(mayfail.value());
+		set_from_desktop_entry(&kapp.eui, &kapp.list.back());
+		return kapp.main_window->present();
+	}
 	
 	kapp.etxt = kapp.builder->get_widget<Gtk::Entry>("etxt");
 	kapp.etxt->signal_changed().connect(sigc::ptr_fun(search_entry_changed));
@@ -452,21 +479,17 @@ void init_ui() {
 	kapp.add_wap_button = kapp.builder->get_widget<Gtk::Button>("add_wap_button");
 	kapp.add_wap_button->signal_clicked().connect(&add_wap_button_clicked);
 
-	kapp.delete_button = kapp.builder->get_widget<Gtk::Button>("delete_button");
-	kapp.delete_button->signal_clicked().connect(&delete_button_clicked);
-
-	kapp.catview_check = kapp.builder->get_widget<Gtk::CheckButton>("catview_check");
-	kapp.catview_check->signal_toggled().connect(sigc::ptr_fun(catview_toggled));
-
 	kapp.main_window->present();
 }
 
 int main(int argc, char* argv[])
 {
 	// Quick hack for accessing .glade file from anywhere
-	std::string first_arg = argv[0];
-	std::string abs_path = first_arg.substr(0, first_arg.length()-EXECUTABLE_NAME.length());
-	
+	if (argc > 1) {
+		kapp.open_file_path = argv[1];
+		kapp.open_file_mode = true;
+	}
+
 	kapp.app = Gtk::Application::create("org.mustafa.dizelge");
 	// FIXME: this assumes dizelge.ui and executable are in the same directory.
 	auto dh = test_runtime_folders();
@@ -483,5 +506,5 @@ int main(int argc, char* argv[])
 
 	kapp.app->signal_activate().connect(sigc::ptr_fun(init_ui));
 
-	return kapp.app->run(argc, argv);
+	return kapp.app->run(1, argv);
 }

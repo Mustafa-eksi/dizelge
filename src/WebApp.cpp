@@ -157,7 +157,7 @@ void add_wap() {
     pe["Desktop Entry"]["Categories"] = "WebApps";
     pe["Desktop Entry"]["Name"] = wai.name_entry->get_text();
     auto new_prof = generate_profile(wai.name);
-    pe["Desktop Entry"]["Exec"] = "firefox "+ wai.url_entry->get_text() +" --name deneme --profile " + (new_prof.has_value() ? new_prof.value() : PROFILE_TEMPLATE_FOLDER);
+    pe["Desktop Entry"]["Exec"] = "sh -c 'XAPP_FORCE_GTKWINDOW_ICON=\""+wai.icon_path+"\" firefox "+ wai.url_entry->get_text() +" --name deneme --profile " + (new_prof.has_value() ? new_prof.value() : PROFILE_TEMPLATE_FOLDER) + "'";
     if (applications_home.empty()) {
         // TODO: open a file dialog here
         if (std::getenv("HOME") == NULL)

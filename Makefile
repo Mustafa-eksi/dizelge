@@ -16,3 +16,4 @@ install: dizelge dizelge.ui
 	mkdir -p $(DESTDIR)$(prefix)/share/dizelge
 	install dizelge.ui $(DESTDIR)$(prefix)/share/dizelge
 	cp -r profile_template $(DESTDIR)$(prefix)/share/dizelge
+	install Dizelge.desktop $(DESTDIR)$(prefix)/share/applications

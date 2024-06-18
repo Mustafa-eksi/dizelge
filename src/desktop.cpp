@@ -146,6 +146,7 @@ void trim_right(std::string &res) {
 std::optional<UnparsedEntry> read_file(std::string filepath) {
         std::string buffer;
         UnparsedEntry unde;
+        try {
 
         // Read whole file into buffer.
         std::ifstream de_file(filepath);
@@ -194,6 +195,9 @@ std::optional<UnparsedEntry> read_file(std::string filepath) {
 skip:
                 if (end_of_line < buffer.size())
                         i = end_of_line;
+        }
+        } catch(std::exception &e) {
+                return {};
         }
         return unde;
 }
