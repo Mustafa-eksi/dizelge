@@ -3,7 +3,7 @@ Maintainer: Mustafa Eksi <mustafa.eskieksi@gmail.com>
 Section: misc
 Priority: optional
 Standards-Version: 4.6.2
-Build-Depends: debhelper-compat (= 13), g++, blueprint-compiler, libgtk-4-dev (<<4.10), libgtkmm-4.0-dev (<<4.10)
+Build-Depends: debhelper-compat (= 13), g++, blueprint-compiler, libgtk-4-dev (<<4.10), libgtkmm-4.0-dev (<<4.10), gettext
 
 Package: dizelge
 Architecture: any

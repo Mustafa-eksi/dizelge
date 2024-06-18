@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-18 19:48+0300\n"
+"POT-Creation-Date: 2024-06-18 21:25+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -105,16 +105,16 @@ msgstr ""
 msgid "Add Web App"
 msgstr ""
 
-#: src/main.cpp:128
+#: src/main.cpp:127
 #, c-format
 msgid "ERROR %s: %s\n"
 msgstr ""
 
-#: src/main.cpp:139
+#: src/main.cpp:138
 msgid "Combined"
 msgstr ""
 
-#: src/main.cpp:298
+#: src/main.cpp:297
 msgid "Enter your shortcut's name here"
 msgstr ""
 
@@ -123,7 +123,7 @@ msgstr ""
 msgid "Are you sure to delete %s"
 msgstr ""
 
-#: src/main.cpp:451
+#: src/main.cpp:452
 #, c-format
 msgid "Can't parse desktop entry: %s\n"
 msgstr ""
@@ -178,7 +178,7 @@ msgstr ""
 msgid "Image Formats"
 msgstr ""
 
-#: src/desktop.cpp:296
+#: src/desktop.cpp:314
 #, c-format
 msgid "UNKNOWN ERROR: Can't open file stream. File path: %s\n"
 msgstr ""

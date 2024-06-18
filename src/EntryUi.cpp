@@ -42,10 +42,10 @@ void open_file_clicked(EntryUi *eui) {
 }
 
 void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
-	de->pe["Desktop Entry"]["Name"] 			= eui->filename_entry->get_text();
+	de->pe["Desktop Entry"][de->Name] 			= eui->filename_entry->get_text();
 	de->pe["Desktop Entry"]["Icon"] 			= eui->iconname_entry->get_text();
 	de->pe["Desktop Entry"]["Exec"] 			= eui->exec_entry->get_text();
-	de->pe["Desktop Entry"]["Comment"] 		= eui->comment_entry->get_text();
+	de->pe["Desktop Entry"][de->Comment]		= eui->comment_entry->get_text();
 	de->pe["Desktop Entry"]["Categories"] 		= eui->categories_entry->get_text();
 	de->pe["Desktop Entry"]["GenericName"] 		= eui->generic_name_entry->get_text();
 	de->pe["Desktop Entry"]["Path"] 			= eui->path_entry->get_text();
@@ -79,9 +79,9 @@ void save_button_clicked(EntryUi *eui) {
 void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry *de) {
 	eui->de = de;
 
-	eui->filename_entry->set_text(de_val(de, "Name"));
+	eui->filename_entry->set_text(de_val(de, de->Name));
 	eui->exec_entry->set_text(de_val(de, "Exec"));
-	eui->comment_entry->set_text(de_val(de, "Comment"));
+	eui->comment_entry->set_text(de_val(de, de->Comment));
 	eui->categories_entry->set_text(de_val(de, "Categories"));
 	eui->generic_name_entry->set_text(de_val(de, "GenericName"));
 	eui->path_entry->set_text(de_val(de, "Path"));

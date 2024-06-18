@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdlib>
+#include <cstring>
 #include <ios>
 #include <optional>
 #include <string>
@@ -49,6 +50,7 @@ typedef std::vector<std::string> CatList;
 
 typedef struct DesktopEntry {
         UnparsedEntry pe;
+        std::string Name, Comment;
         enum EntryType type;
         bool isGicon, onMenu, onDesktop, onTaskbar, HiddenFilter, NoDisplayFilter,
              OnlyShowInFilter, TryExecFilter;
@@ -249,7 +251,7 @@ CatList parse_categories(UnparsedEntry pe) {
         return res;
 }
 
-std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env) {
+std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env, char* lang) {
         if (auto unde = read_file(filepath)){
                 if(!unde.has_value())
                         return {};
@@ -258,8 +260,24 @@ std::optional<DesktopEntry> parse_file(std::string filepath, std::string xdg_env
                 // See specification: table 2. Standard Keys
                 if (et == EntryType::UndefinedType)
                         return {};
+                std::string language, locale_name = "Name", locale_comment = "Comment";
+                if (lang != NULL && strlen(lang) >= 2) {
+                        language = ((std::string)lang).substr(0, 2);
+                        if (!upe["Desktop Entry"]["Name["+language+"]"].empty())
+                                locale_name = "Name["+language+"]";
+                        if (!upe["Desktop Entry"]["Comment["+language+"]"].empty())
+                                locale_comment = "Comment["+language+"]";
+                }
+                if (!upe["Desktop Entry"].contains(locale_name)) {
+                        upe["Desktop Entry"][locale_name] = "";
+                }
+                if (!upe["Desktop Entry"].contains(locale_comment)) {
+                        upe["Desktop Entry"][locale_comment] = "";
+                }
                 DesktopEntry de = (DesktopEntry) {
                         .pe = upe,
+                        .Name = locale_name,
+                        .Comment = locale_comment,
                         .type = et,
                         .HiddenFilter = upe["Desktop Entry"]["Hidden"] == "true",
                         .NoDisplayFilter = upe["Desktop Entry"]["NoDisplay"] == "true",

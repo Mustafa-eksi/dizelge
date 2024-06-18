@@ -77,17 +77,15 @@ using namespace std::placeholders; // This is to avoid writing "std::placeholder
 // TODO: Put these into settings.
 bool is_catview = false;
 
-bool scan_file(KisayolApp *kapp, std::string path) {
-	auto pde = deskentry::parse_file(path, kapp->XDG_ENV);
+bool scan_file(KisayolApp *kapp, std::string path, char* lang) {
+	auto pde = deskentry::parse_file(path, kapp->XDG_ENV, lang);
 	if (!pde.has_value())
 		return false;
 	auto pe = pde.value();
-	//if (pe.type != deskentry::EntryType::Application)
-	//	printf("-> %s\n", path.c_str());
 	if (!pe.HiddenFilter || !pe.NoDisplayFilter || !pe.OnlyShowInFilter) {
 		kapp->list_mutex.lock();
 		for (size_t i = 0; i < pe.Categories.size(); i++) {
-			kapp->catview.catlist[pe.Categories[i]][pe.pe["Desktop Entry"]["Name"]] = kapp->list.size();
+			kapp->catview.catlist[pe.Categories[i]][pe.pe["Desktop Entry"][pe.Name]] = kapp->list.size();
 		}
 		kapp->list.push_back(pe);
 		kapp->list_mutex.unlock();
@@ -99,7 +97,7 @@ void recalculate_catlist() {
 	kapp.catview.catlist.clear();
 	for (size_t i = 0; i < kapp.list.size(); i++) {
 		for (const auto& c : kapp.list[i].Categories) {
-			kapp.catview.catlist[c][kapp.list[i].pe["Desktop Entry"]["Name"]] = i;
+			kapp.catview.catlist[c][kapp.list[i].pe["Desktop Entry"][kapp.list[i].Name]] = i;
 		}
 	}
 }
@@ -107,6 +105,7 @@ void recalculate_catlist() {
 bool scan_folder(std::string folder_path) {
 	// Replace tildes (~) with /home/<username>
 	size_t tildepos = folder_path.find("~");
+	char* lang = std::getenv("LANG");
 	if (tildepos != std::string::npos) // Rep
 		folder_path = folder_path.replace(tildepos, 1, std::getenv("HOME"));
 
@@ -123,7 +122,7 @@ bool scan_folder(std::string folder_path) {
 				continue;
 			}
 			//scan_file(&kapp, entry.path());
-			threads.push_back(std::thread(scan_file, &kapp, entry.path()));
+			threads.push_back(std::thread(scan_file, &kapp, entry.path(), lang));
 		} catch (std::exception& e) {
 			printf(_("ERROR %s: %s\n"), entry.path().c_str(), e.what());
 			return false;
@@ -231,7 +230,7 @@ void populate_stringlist(bool is_catview) {
 			kapp.lui.strings.push_front(NEW_SHORTCUT_CAT);
 	} else {
 		for (auto app : kapp.list) {
-			kapp.lui.strings.push_back(app.pe["Desktop Entry"]["Name"]);
+			kapp.lui.strings.push_back(app.pe["Desktop Entry"][app.Name]);
 		}
 	}
 }
@@ -299,6 +298,7 @@ void add_new_button_clicked(void) {
 	ue["Desktop Entry"]["Categories"] = NEW_SHORTCUT_CAT;
 	deskentry::DesktopEntry newentry = {
 		.pe = ue,
+		.Name = "Name",
 		.type = deskentry::EntryType::Application,
 		.Categories = {NEW_SHORTCUT_CAT},
 	};
@@ -390,7 +390,7 @@ void search_entry_changed() {
 	if (is_catview) {
 		std::map<std::string, bool> ce;
 		for (size_t i = 0; i < kapp.list.size(); i++) {
-			if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"])) {
+			if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"][kapp.list[i].Name])) {
 				for (size_t j = 0; j < kapp.list[i].Categories.size(); j++) {
 					ce[kapp.list[i].Categories[j]] = true;
 				}
@@ -408,9 +408,10 @@ void search_entry_changed() {
 	} else {
 		kapp.lui.strings.clear();
 		for (size_t i = 0; i < kapp.list.size(); i++) {
-			if (insensitive_search(filter_text, kapp.list[i].pe["Desktop Entry"]["Name"])) {
-				kapp.lui.strings.push_back(kapp.list[i].pe["Desktop Entry"]["Name"]);
-				kapp.lmap[kapp.list[i].pe["Desktop Entry"]["Name"]] = i;
+			auto appname = kapp.list[i].pe["Desktop Entry"][kapp.list[i].Name];
+			if (insensitive_search(filter_text, appname)) {
+				kapp.lui.strings.push_back(appname);
+				kapp.lmap[appname] = i;
 			}
 		}
 		kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()});
@@ -446,7 +447,7 @@ void init_ui() {
 	kapp.builder->get_widget<Gtk::Box>("sidepanel")->set_visible(!kapp.open_file_mode);
 
 	if (kapp.open_file_mode) {
-		auto mayfail = deskentry::parse_file(kapp.open_file_path, kapp.XDG_ENV);
+		auto mayfail = deskentry::parse_file(kapp.open_file_path, kapp.XDG_ENV, std::getenv("LANG"));
 		if (!mayfail.has_value()) {
 			printf(_("Can't parse desktop entry: %s\n"), kapp.open_file_path.c_str());
 			return;

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-18 19:46+0300\n"
+"POT-Creation-Date: 2024-06-18 21:24+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Mustafa Ekşi <mustafa.eskieksi@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -105,16 +105,16 @@ msgstr "Bağlantı:"
 msgid "Add Web App"
 msgstr "Web uygulamasını ekle"
 
-#: src/main.cpp:128
+#: src/main.cpp:127
 #, c-format
 msgid "ERROR %s: %s\n"
 msgstr "HATA: %s: %s\n"
 
-#: src/main.cpp:139
+#: src/main.cpp:138
 msgid "Combined"
 msgstr "Birleşik"
 
-#: src/main.cpp:298
+#: src/main.cpp:297
 msgid "Enter your shortcut's name here"
 msgstr "Buraya kısayolunuzun adını yazın"
 
@@ -123,7 +123,7 @@ msgstr "Buraya kısayolunuzun adını yazın"
 msgid "Are you sure to delete %s"
 msgstr "%s'i silmekte emin misiniz?"
 
-#: src/main.cpp:451
+#: src/main.cpp:452
 #, c-format
 msgid "Can't parse desktop entry: %s\n"
 msgstr "Masaüstü kısayolu işlenemedi: %s\n"
@@ -178,7 +178,7 @@ msgstr "Seç"
 msgid "Image Formats"
 msgstr "Resim uzantıları"
 
-#: src/desktop.cpp:296
+#: src/desktop.cpp:314
 #, c-format
 msgid "UNKNOWN ERROR: Can't open file stream. File path: %s\n"
 msgstr "BİLİNMEYEN HATA: Dosya açılamadı. Dosya yolu: %s\n"
