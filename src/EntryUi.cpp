@@ -70,8 +70,6 @@ void save_button_clicked(EntryUi *eui) {
 		eui->save_button_dialog = gtk_file_chooser_dialog_new("Save desktop entry", eui->main_window, GTK_FILE_CHOOSER_ACTION_SAVE, "Save", "", (char*)NULL);
 		g_signal_connect(eui->save_button_dialog, "response", G_CALLBACK(save_button_callback), eui);
 		gtk_window_present(GTK_WINDOW(eui->save_button_dialog));
-
-		// eui->save_button_dialog.present(); //(sigc::bind(&save_button_callback, eui));
 		return;
 	}
 	deskentry::write_to_file(de->pe, de->path);
@@ -122,8 +120,6 @@ void choose_image_clicked(EntryUi *eui) {
 	eui->fd = gtk_file_chooser_dialog_new("Select image file", eui->main_window, GTK_FILE_CHOOSER_ACTION_OPEN, "Select", "", (char*)NULL);
 	g_signal_connect(eui->fd, "response", G_CALLBACK(choose_image_callback), eui);
 	gtk_window_present(GTK_WINDOW(eui->fd));
-	//eui->fd.present(); // (sigc::bind(&async_callback, eui), nullptr);
-	printf("hello world\n");
 }
 
 void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder, GtkWindow *window) {

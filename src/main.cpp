@@ -169,7 +169,7 @@ void scan_combined() {
 
 void list_selection_changed(guint p, guint p2, Glib::RefPtr<Gtk::SingleSelection> sm, bool is_category, bool is_mapped, std::string list_ind) {
 	auto selected_index = sm->get_selected();
-	if (selected_index == -1) return;
+	if (selected_index == GTK_INVALID_LIST_POSITION) return;
 	if (is_category) {
 		if (kapp.catview.models->contains(kapp.catview.previous_cat) && kapp.catview.previous_cat != list_ind) {
 			kapp.catview.models->at(kapp.catview.previous_cat)->set_selected(-1);
@@ -326,11 +326,12 @@ void erase_current(size_t to_erase) {
 
 void delete_confirm(GtkDialog* self, gint response_id, gpointer user_data) {
 	std::string depath = *(std::string*)user_data;
-	printf("id: %d\n", response_id);
+	if (response_id == -4) return;
 	if (response_id != -5) {
 		gtk_window_close(GTK_WINDOW(kapp.ad));
 		return;
 	}
+	if (depath.empty()) return;
 	if (access(depath.c_str(), W_OK) != 0) {
 		system(("pkexec bash -c \"rm "+depath+"\"").c_str());
 	} else {
@@ -347,6 +348,7 @@ void delete_confirm(GtkDialog* self, gint response_id, gpointer user_data) {
 
 void delete_button_clicked(void) {
 	size_t to_erase = 0;
+	if (kapp.eui.de == NULL) return;
 	if (!kapp.eui.de->path.empty()) {
 		kapp.ad = gtk_message_dialog_new(kapp.main_window->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_QUESTION, GTK_BUTTONS_OK_CANCEL, "Are you sure to delete %s", kapp.eui.de->path.c_str());
 		g_signal_connect(kapp.ad, "response", G_CALLBACK(delete_confirm), &kapp.eui.de->path);
@@ -354,11 +356,15 @@ void delete_button_clicked(void) {
 		return;
 	}
 	if (is_catview) {
+		if (!kapp.catview.models->contains(kapp.catview.previous_cat))
+			return;
 		auto catind = dynamic_cast<Gtk::StringObject*>(kapp.catview.models->at(kapp.catview.previous_cat)->get_selected_item().get())->get_string();
 		to_erase = kapp.catview.catlist[kapp.catview.previous_cat][catind];
 	} else {
 		to_erase = kapp.lui.ss->get_selected();
 	}
+	if (to_erase == GTK_INVALID_LIST_POSITION)
+		return;
 	erase_current(to_erase);
 }
 
