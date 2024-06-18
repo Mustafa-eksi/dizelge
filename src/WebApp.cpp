@@ -130,12 +130,14 @@ std::optional<std::string> generate_profile(std::string name) {
 
 void wap_added(GtkDialog* self, gint response_id, gpointer user_data) {
     // wai.ad->choose_finish(res);
-    gtk_window_close(GTK_WINDOW(wai.ad));
+    if (response_id == -4) return;
+    gtk_window_close(GTK_WINDOW(self));
     wai.w->close();
 }
 
 void ok_buddy(GtkDialog* self, gint response_id, gpointer user_data) {
     // wai.ad->choose_finish(res);
+    if (response_id == -4) return;
     gtk_window_close(GTK_WINDOW(wai.unfilled));
 }
 
@@ -168,11 +170,13 @@ void add_wap() {
     gtk_window_present(GTK_WINDOW(wai.ad));
 }
 
-void close_wap() {
+bool close_wap() {
     wai.get_favicon_button_connection.disconnect();
     wai.add_button_connection.disconnect();
 
+    // wai.w->hide();
     wai = {0};
+    return false;
 }
 
 void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string datah) {

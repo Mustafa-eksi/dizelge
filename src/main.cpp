@@ -274,12 +274,6 @@ void folder_dd_select() {
 	}
 }
 
-bool new_window_close() {
-	kapp.new_window->unset_application();
-	close_wap();
-	return false;
-}
-
 void add_new_button_clicked(void) {
 	deskentry::UnparsedEntry ue;
 	ue["Desktop Entry"]["Name"] = "Enter your shortcut's name here";
@@ -300,9 +294,9 @@ void add_new_button_clicked(void) {
 }
 
 void add_wap_button_clicked(void) {
-	kapp.new_window->show();
+	kapp.new_window->signal_close_request().connect(&close_wap, false);
 	kapp.new_window->set_application(kapp.app);
-	kapp.new_window->signal_close_request().connect(&new_window_close, false);
+	kapp.new_window->present();
 	new_ui(kapp.builder, kapp.data_home);
 }
 
@@ -431,7 +425,8 @@ void init_ui() {
 	kapp.folder_dd->connect_property_changed("selected", sigc::ptr_fun(folder_dd_select));
 	
 	kapp.new_window = kapp.builder->get_widget<Gtk::Window>("new_desktop_window");
-	kapp.new_window->set_hide_on_close(true);
+	kapp.new_window->signal_close_request().connect(&close_wap, false);
+	kapp.new_window->set_hide_on_close();
 
 	kapp.add_new_button = kapp.builder->get_widget<Gtk::Button>("add_new_button");
 	kapp.add_new_button->signal_clicked().connect(&add_new_button_clicked);
