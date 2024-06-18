@@ -18,6 +18,7 @@ typedef struct {
 	Gtk::Image *icon;
 	Gtk::Button *open_file_button, *save_button, *choose_image;
 	GtkWidget *fd, *save_button_dialog;
+	GtkWindow *main_window;
 } EntryUi;
 
 const std::vector<Glib::ustring> TypeLookup = {"Application", "Link", "Directory"};
@@ -53,19 +54,23 @@ void sync_pe(EntryUi *eui, deskentry::DesktopEntry *de) {
 	de->pe["Desktop Entry"]["Type"] = TypeLookup[eui->type_drop->get_selected()];
 }
 
-void save_button_callback(std::shared_ptr<Gio::AsyncResult>& res, EntryUi *eui) {
-	// auto folder = eui->save_button_dialog->save_finish(res);
-	/*auto folderpath = folder->get_path();
-	if (folderpath.empty()) return;
-	eui->de->path = folderpath;
-	deskentry::write_to_file(eui->de->pe, eui->de->path, true);*/
+void save_button_callback(GtkDialog* self, gint response_id, gpointer user_data) {
+	if (response_id == -4) return; // close
+	auto eui = (EntryUi*) user_data;
+	auto file = g_file_get_path(gtk_file_chooser_get_file(GTK_FILE_CHOOSER(eui->save_button_dialog)));
+	eui->de->path = file;
+	deskentry::write_to_file(eui->de->pe, eui->de->path, true);
+	gtk_window_close(GTK_WINDOW(self));
 }
 
 void save_button_clicked(EntryUi *eui) {
 	sync_pe(eui, eui->de);
 	auto de = eui->de;
 	if (de->path.empty()) {
+		eui->save_button_dialog = gtk_file_chooser_dialog_new("Save desktop entry", eui->main_window, GTK_FILE_CHOOSER_ACTION_SAVE, "Save", "", (char*)NULL);
+		g_signal_connect(eui->save_button_dialog, "response", G_CALLBACK(save_button_callback), eui);
 		gtk_window_present(GTK_WINDOW(eui->save_button_dialog));
+
 		// eui->save_button_dialog.present(); //(sigc::bind(&save_button_callback, eui));
 		return;
 	}
@@ -101,22 +106,28 @@ void set_from_desktop_entry(EntryUi *eui, deskentry::DesktopEntry *de) {
 	set_icon(eui->icon, de_val(de, "Icon"));
 }
 
-void async_callback(std::shared_ptr<Gio::AsyncResult>& res, EntryUi *eui) {
+void choose_image_callback(GtkDialog* self, gint response_id, gpointer user_data) {
+	if (response_id == -4) return;
+	auto eui = (EntryUi*) user_data;
 	auto file = gtk_file_chooser_get_file(GTK_FILE_CHOOSER(eui->fd));
 	auto filepath = g_file_get_path(file);
 	printf("filepath: %s\n", filepath);
 	eui->de->pe["Desktop Entry"]["Icon"] = filepath;
 	set_icon(eui->icon, filepath);
 	eui->iconname_entry->set_text(de_val(eui->de, "Icon"));
+	gtk_window_close(GTK_WINDOW(self));
 }
 
 void choose_image_clicked(EntryUi *eui) {
+	eui->fd = gtk_file_chooser_dialog_new("Select image file", eui->main_window, GTK_FILE_CHOOSER_ACTION_OPEN, "Select", "", (char*)NULL);
+	g_signal_connect(eui->fd, "response", G_CALLBACK(choose_image_callback), eui);
 	gtk_window_present(GTK_WINDOW(eui->fd));
 	//eui->fd.present(); // (sigc::bind(&async_callback, eui), nullptr);
 	printf("hello world\n");
 }
 
 void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder, GtkWindow *window) {
+	eui->main_window = window;
 	eui->terminal_check 	= builder->get_widget<Gtk::CheckButton>("terminal_check");
 	eui->single_main_window = builder->get_widget<Gtk::CheckButton>("single_main_window");
 	eui->dgpu_check 		= builder->get_widget<Gtk::CheckButton>("dgpu_check");
@@ -132,9 +143,6 @@ void entry_ui(EntryUi *eui, Glib::RefPtr<Gtk::Builder> builder, GtkWindow *windo
 	eui->path_entry 		= builder->get_widget<Gtk::Entry>("path_entry");
 	eui->iconname_entry 	= builder->get_widget<Gtk::Entry>("iconname_entry");
 	eui->icon 				= builder->get_widget<Gtk::Image>("app_icon");
-
-	eui->fd = gtk_file_chooser_dialog_new("Select image file", window, GTK_FILE_CHOOSER_ACTION_OPEN, "Select", NULL);
-	eui->save_button_dialog = gtk_file_chooser_dialog_new("Save desktop entry", window, GTK_FILE_CHOOSER_ACTION_SAVE, "Save", NULL);
 
 	auto filter = Gtk::FileFilter::create();
 	filter->add_pattern("*.png *.svg *.jpg *.jpeg *.gif");

@@ -160,7 +160,7 @@ void add_wap() {
         // TODO: open a file dialog here
         if (std::getenv("HOME") == NULL)
             return;
-        applications_home = (std::string)std::getenv("HOME") + "/Desktop";
+        applications_home = "/usr/share/applications";
     }
     deskentry::write_to_file(pe, applications_home+"/"+pe["Desktop Entry"]["Name"]+".desktop", true);
     wai.ad = gtk_message_dialog_new(wai.w->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "Web app created successfully!");
