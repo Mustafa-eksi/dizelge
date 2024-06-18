@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-18 21:24+0300\n"
+"POT-Creation-Date: 2024-06-18 22:40+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Mustafa Ekşi <mustafa.eskieksi@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -141,7 +141,7 @@ msgstr "Tüm alanlar doldurulmalı!"
 msgid "Web app created successfully!"
 msgstr "Web uygulaması başarıyla oluşturuldu!"
 
-#: src/WebApp.cpp:190
+#: src/WebApp.cpp:189
 #, c-format
 msgid "ERROR: Web app window failed to access needed folders."
 msgstr "HATA: Web uygulaması penceresi gerekli klasörlere erişemedi"

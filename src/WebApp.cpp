@@ -174,7 +174,6 @@ void add_wap() {
 bool close_wap() {
     wai.get_favicon_button_connection.disconnect();
     wai.add_button_connection.disconnect();
-
     // wai.w->hide();
     wai = {0};
     return false;
@@ -203,6 +202,7 @@ void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string datah, std::string desktop
     wai.url_entry->set_text("");
     wai.icon->clear();
     wai.name_entry->set_text("");
+    wai.icon_stack->set_visible_child(*wai.get_favicon_button);
 
     wai.add_button_connection = wai.add_button->signal_clicked().connect(sigc::ptr_fun(add_wap));
     wai.get_favicon_button_connection = wai.get_favicon_button->signal_clicked().connect(sigc::ptr_fun(get_favicon));
