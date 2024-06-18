@@ -273,21 +273,8 @@ void folder_dd_select() {
 		}
 		recalculate_catlist();
 		initialize_list();
-		/*populate_stringlist(is_catview);
-		if (kapp.lui.strings.empty()) return;
-		kapp.lui.sl.reset();
-		kapp.lui.sl = Gtk::StringList::create({kapp.lui.strings.begin(), kapp.lui.strings.end()});
-		if (is_catview) {
-			kapp.lui.ns.reset();
-			kapp.lui.ns = Gtk::NoSelection::create(kapp.lui.sl);
-			kapp.lui.listem->set_model(kapp.lui.ns);
-		} else {
-			kapp.lui.ss.reset();
-			kapp.lui.ss = Gtk::SingleSelection::create(kapp.lui.sl);
-			if (!kapp.lui.ss) return;
-			kapp.lui.listem->set_model(kapp.lui.ss);
-		}*/
-		//listview_signals(is_catview, false);
+		if (!is_catview)
+			kapp.lui.ss->set_selected(-1);
 		kapp.selected_folder = new_folder;
 	}
 }

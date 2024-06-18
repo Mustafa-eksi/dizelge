@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-18 22:40+0300\n"
+"POT-Creation-Date: 2024-06-18 23:15+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Mustafa Ekşi <mustafa.eskieksi@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -114,16 +114,16 @@ msgstr "HATA: %s: %s\n"
 msgid "Combined"
 msgstr "Birleşik"
 
-#: src/main.cpp:297
+#: src/main.cpp:284
 msgid "Enter your shortcut's name here"
 msgstr "Buraya kısayolunuzun adını yazın"
 
-#: src/main.cpp:364
+#: src/main.cpp:351
 #, c-format
 msgid "Are you sure to delete %s"
 msgstr "%s'i silmekte emin misiniz?"
 
-#: src/main.cpp:452
+#: src/main.cpp:439
 #, c-format
 msgid "Can't parse desktop entry: %s\n"
 msgstr "Masaüstü kısayolu işlenemedi: %s\n"

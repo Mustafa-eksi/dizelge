@@ -8,4 +8,4 @@ Build-Depends: debhelper-compat (= 13), g++, blueprint-compiler, libgtk-4-dev (<
 Package: dizelge
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, wget
-Description: Lists desktop entry files.
+Description: Desktop entry editor with web app features.

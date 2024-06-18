@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-18 22:40+0300\n"
+"POT-Creation-Date: 2024-06-18 23:17+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -114,16 +114,16 @@ msgstr ""
 msgid "Combined"
 msgstr ""
 
-#: src/main.cpp:297
+#: src/main.cpp:284
 msgid "Enter your shortcut's name here"
 msgstr ""
 
-#: src/main.cpp:364
+#: src/main.cpp:351
 #, c-format
 msgid "Are you sure to delete %s"
 msgstr ""
 
-#: src/main.cpp:452
+#: src/main.cpp:439
 #, c-format
 msgid "Can't parse desktop entry: %s\n"
 msgstr ""
