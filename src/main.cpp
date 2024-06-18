@@ -63,7 +63,7 @@ struct KisayolApp {
 	std::vector<Glib::ustring> scanned_folders;
 	size_t selected_folder;
 	char *XDG_ENV;
-	std::string data_home;
+	std::string data_home, desktop_dir;
 };
 
 // TODO: get rid of global variables
@@ -151,8 +151,20 @@ void scan_combined() {
 	}
 	scan_folder("~/.local/share/applications/");
 	kapp.scanned_folders.push_back("~/.local/share/applications/");
-	scan_folder("~/Desktop/");
-	kapp.scanned_folders.push_back("~/Desktop/");
+
+	FILE *ddp = popen("xdg-user-dir DESKTOP", "r");
+
+	char read_buf[1024] = {0};
+	fgets(read_buf, 1023, ddp);
+	if (strlen(read_buf) > 0) {
+		kapp.desktop_dir = read_buf;
+		auto newline = kapp.desktop_dir.find_last_of('\n');
+		if (newline != std::string::npos)
+			kapp.desktop_dir = kapp.desktop_dir.substr(0, newline);
+		scan_folder(kapp.desktop_dir);
+		kapp.scanned_folders.push_back(kapp.desktop_dir);
+	}
+	pclose(ddp);
 }
 
 void list_selection_changed(guint p, guint p2, Glib::RefPtr<Gtk::SingleSelection> sm, bool is_category, bool is_mapped, std::string list_ind) {
@@ -297,7 +309,7 @@ void add_wap_button_clicked(void) {
 	kapp.new_window->signal_close_request().connect(&close_wap, false);
 	kapp.new_window->set_application(kapp.app);
 	kapp.new_window->present();
-	new_ui(kapp.builder, kapp.data_home);
+	new_ui(kapp.builder, kapp.data_home, kapp.desktop_dir);
 }
 
 void erase_current(size_t to_erase) {

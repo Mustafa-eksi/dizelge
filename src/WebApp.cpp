@@ -28,7 +28,7 @@ struct WebAppUi {
 };
 
 // Variables that are same for every window.
-std::string data_home, applications_home;
+std::string data_home, applications_home, desktopd;
 
 WebAppUi wai = {0};
 
@@ -162,7 +162,7 @@ void add_wap() {
         // TODO: open a file dialog here
         if (std::getenv("HOME") == NULL)
             return;
-        applications_home = "/usr/share/applications";
+        applications_home = desktopd;
     }
     deskentry::write_to_file(pe, applications_home+"/"+pe["Desktop Entry"]["Name"]+".desktop", true);
     wai.ad = gtk_message_dialog_new(wai.w->gobj(), GTK_DIALOG_MODAL, GTK_MESSAGE_WARNING, GTK_BUTTONS_OK, "Web app created successfully!");
@@ -179,7 +179,8 @@ bool close_wap() {
     return false;
 }
 
-void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string datah) {
+void new_ui(Glib::RefPtr<Gtk::Builder> b, std::string datah, std::string desktop_dir) {
+    desktopd = desktop_dir;
     if (datah.empty()) {
         auto dh = test_runtime_folders();
         if (dh.has_value())

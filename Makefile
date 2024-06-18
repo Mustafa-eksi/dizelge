@@ -15,4 +15,4 @@ install: dizelge dizelge.ui
 	install dizelge $(DESTDIR)$(prefix)/bin
 	mkdir -p $(DESTDIR)$(prefix)/share/dizelge
 	install dizelge.ui $(DESTDIR)$(prefix)/share/dizelge
-	install -d profile_template $(DESTDIR)$(prefix)/share/dizelge
+	cp -r profile_template $(DESTDIR)$(prefix)/share/dizelge
