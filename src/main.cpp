@@ -489,6 +489,9 @@ void init_ui() {
 
 int main(int argc, char* argv[])
 {
+	setlocale(LC_ALL,"");
+	bindtextdomain("dizelge","/usr/share/locale");
+	textdomain("dizelge");
 	// Quick hack for accessing .glade file from anywhere
 	if (argc > 1) {
 		kapp.open_file_path = argv[1];
