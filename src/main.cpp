@@ -1,4 +1,4 @@
-#include <algorithm>
+#include<algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <exception>
@@ -22,7 +22,6 @@
 #include "EntryUi.cpp"
 #include "WebApp.cpp"
 
-const std::string EXECUTABLE_NAME = "dizelge";
 const std::string NEW_SHORTCUT_CAT = "MyShortcuts";
 /*
  * This file contains some ui stuff and general stuff that doesn't fit to other files.
@@ -477,8 +476,15 @@ void init_ui() {
 
 int main(int argc, char* argv[])
 {
+	// Find where the executable is to prefix other paths
+	char buff[2048] = {0};
+	readlink("/proc/self/exe", buff, 2047);
+	std::string pwd = buff;
+	auto pdd = pwd.substr(0, pwd.find_last_of('/'));
+	pdd = pwd.substr(0, pdd.find_last_of('/'));
+	
 	setlocale(LC_ALL,"");
-	bindtextdomain("dizelge","/usr/share/locale");
+	bindtextdomain("dizelge", (pdd+"/share/locale").c_str());
 	textdomain("dizelge");
 	// Quick hack for accessing .glade file from anywhere
 	if (argc > 1) {
@@ -487,12 +493,11 @@ int main(int argc, char* argv[])
 	}
 
 	kapp.app = Gtk::Application::create("me.mustafa.dizelge");
-	// FIXME: this assumes dizelge.ui and executable are in the same directory.
 	auto dh = test_runtime_folders();
 	if (dh.has_value())
 		kapp.data_home = dh.value();
 
-	kapp.builder = Gtk::Builder::create_from_file("/usr/share/dizelge/dizelge.ui");
+	kapp.builder = Gtk::Builder::create_from_file(pdd+"/share/dizelge/dizelge.ui");
 	if(!kapp.builder)
 		return 1;
 
@@ -501,6 +506,5 @@ int main(int argc, char* argv[])
 		kapp.XDG_ENV = const_cast<char*>("none");
 
 	kapp.app->signal_activate().connect(sigc::ptr_fun(init_ui));
-
 	return kapp.app->run(1, argv);
 }

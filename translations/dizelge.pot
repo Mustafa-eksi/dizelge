@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-18 23:17+0300\n"
+"POT-Creation-Date: 2024-07-15 14:15+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -89,8 +89,16 @@ msgstr ""
 msgid "Category View"
 msgstr ""
 
+#: main.blp:276
+msgid "Delete"
+msgstr ""
+
 #: main.blp:281
 msgid "Open file"
+msgstr ""
+
+#: main.blp:290 src/EntryUi.cpp:71
+msgid "Save"
 msgstr ""
 
 #: main.blp:311
@@ -105,25 +113,25 @@ msgstr ""
 msgid "Add Web App"
 msgstr ""
 
-#: src/main.cpp:127
+#: src/main.cpp:126
 #, c-format
 msgid "ERROR %s: %s\n"
 msgstr ""
 
-#: src/main.cpp:138
+#: src/main.cpp:137
 msgid "Combined"
 msgstr ""
 
-#: src/main.cpp:284
+#: src/main.cpp:283
 msgid "Enter your shortcut's name here"
 msgstr ""
 
-#: src/main.cpp:351
+#: src/main.cpp:350
 #, c-format
 msgid "Are you sure to delete %s"
 msgstr ""
 
-#: src/main.cpp:439
+#: src/main.cpp:438
 #, c-format
 msgid "Can't parse desktop entry: %s\n"
 msgstr ""
@@ -160,10 +168,6 @@ msgstr ""
 
 #: src/EntryUi.cpp:71
 msgid "Save desktop entry"
-msgstr ""
-
-#: src/EntryUi.cpp:71
-msgid "Save"
 msgstr ""
 
 #: src/EntryUi.cpp:120

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: 0.2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-18 23:15+0300\n"
+"POT-Creation-Date: 2024-07-15 14:15+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Mustafa Ekşi <mustafa.eskieksi@gmail.com>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -89,9 +89,17 @@ msgstr "Gelişmiş"
 msgid "Category View"
 msgstr "Kategori görünümü"
 
+#: main.blp:276
+msgid "Delete"
+msgstr "Sil"
+
 #: main.blp:281
 msgid "Open file"
 msgstr "Dosyayı Aç"
+
+#: main.blp:290 src/EntryUi.cpp:71
+msgid "Save"
+msgstr "Kaydet"
 
 #: main.blp:311
 msgid "Get favicon"
@@ -105,25 +113,25 @@ msgstr "Bağlantı:"
 msgid "Add Web App"
 msgstr "Web uygulamasını ekle"
 
-#: src/main.cpp:127
+#: src/main.cpp:126
 #, c-format
 msgid "ERROR %s: %s\n"
 msgstr "HATA: %s: %s\n"
 
-#: src/main.cpp:138
+#: src/main.cpp:137
 msgid "Combined"
 msgstr "Birleşik"
 
-#: src/main.cpp:284
+#: src/main.cpp:283
 msgid "Enter your shortcut's name here"
 msgstr "Buraya kısayolunuzun adını yazın"
 
-#: src/main.cpp:351
+#: src/main.cpp:350
 #, c-format
 msgid "Are you sure to delete %s"
 msgstr "%s'i silmekte emin misiniz?"
 
-#: src/main.cpp:439
+#: src/main.cpp:438
 #, c-format
 msgid "Can't parse desktop entry: %s\n"
 msgstr "Masaüstü kısayolu işlenemedi: %s\n"
@@ -161,10 +169,6 @@ msgstr "Dizin"
 #: src/EntryUi.cpp:71
 msgid "Save desktop entry"
 msgstr "Masaüstü kısayolunu kaydet"
-
-#: src/EntryUi.cpp:71
-msgid "Save"
-msgstr "Kaydet"
 
 #: src/EntryUi.cpp:120
 msgid "Select image file"

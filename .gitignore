@@ -4,3 +4,4 @@ dizelge.ui
 main.ui
 settings
 *.mo
+flake.lock

@@ -14,10 +14,12 @@ main: src/*
 	g++ src/main.cpp -o dizelge $(CFLAGS) $(LIBS)
 
 install: dizelge dizelge.ui translations/* profile_template/*
+	install -d $(DESTDIR)$(prefix)/bin
 	install dizelge $(DESTDIR)$(prefix)/bin
 	install -D -t $(SHARE_DIR) dizelge.ui
 	install -D -t $(SHARE_DIR)/profile_template profile_template/user.js
 	install -D -t $(SHARE_DIR)/profile_template/chrome profile_template/chrome/userChrome.css
+	install -d $(DESTDIR)$(prefix)/share/applications/
 	install Dizelge.desktop $(DESTDIR)$(prefix)/share/applications/me.mustafa.dizelge.desktop
 	# TODO: Automate translations
 	install -d $(LOCALE_DIR)/tr/LC_MESSAGES
